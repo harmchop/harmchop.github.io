@@ -80,6 +80,190 @@ function A9(fun, a, b, c, d, e, f, g, h, i) {
 console.warn('Compiled in DEV mode. Follow the advice at https://elm-lang.org/0.19.1/optimize for better performance and smaller assets.');
 
 
+// EQUALITY
+
+function _Utils_eq(x, y)
+{
+	for (
+		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
+		isEqual && (pair = stack.pop());
+		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
+		)
+	{}
+
+	return isEqual;
+}
+
+function _Utils_eqHelp(x, y, depth, stack)
+{
+	if (x === y)
+	{
+		return true;
+	}
+
+	if (typeof x !== 'object' || x === null || y === null)
+	{
+		typeof x === 'function' && _Debug_crash(5);
+		return false;
+	}
+
+	if (depth > 100)
+	{
+		stack.push(_Utils_Tuple2(x,y));
+		return true;
+	}
+
+	/**/
+	if (x.$ === 'Set_elm_builtin')
+	{
+		x = $elm$core$Set$toList(x);
+		y = $elm$core$Set$toList(y);
+	}
+	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	/**_UNUSED/
+	if (x.$ < 0)
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	for (var key in x)
+	{
+		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+var _Utils_equal = F2(_Utils_eq);
+var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
+
+
+
+// COMPARISONS
+
+// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
+// the particular integer values assigned to LT, EQ, and GT.
+
+function _Utils_cmp(x, y, ord)
+{
+	if (typeof x !== 'object')
+	{
+		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
+	}
+
+	/**/
+	if (x instanceof String)
+	{
+		var a = x.valueOf();
+		var b = y.valueOf();
+		return a === b ? 0 : a < b ? -1 : 1;
+	}
+	//*/
+
+	/**_UNUSED/
+	if (typeof x.$ === 'undefined')
+	//*/
+	/**/
+	if (x.$[0] === '#')
+	//*/
+	{
+		return (ord = _Utils_cmp(x.a, y.a))
+			? ord
+			: (ord = _Utils_cmp(x.b, y.b))
+				? ord
+				: _Utils_cmp(x.c, y.c);
+	}
+
+	// traverse conses until end of a list or a mismatch
+	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
+	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
+}
+
+var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
+var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
+var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
+var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
+
+var _Utils_compare = F2(function(x, y)
+{
+	var n = _Utils_cmp(x, y);
+	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
+});
+
+
+// COMMON VALUES
+
+var _Utils_Tuple0_UNUSED = 0;
+var _Utils_Tuple0 = { $: '#0' };
+
+function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
+function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
+
+function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
+function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
+
+function _Utils_chr_UNUSED(c) { return c; }
+function _Utils_chr(c) { return new String(c); }
+
+
+// RECORDS
+
+function _Utils_update(oldRecord, updatedFields)
+{
+	var newRecord = {};
+
+	for (var key in oldRecord)
+	{
+		newRecord[key] = oldRecord[key];
+	}
+
+	for (var key in updatedFields)
+	{
+		newRecord[key] = updatedFields[key];
+	}
+
+	return newRecord;
+}
+
+
+// APPEND
+
+var _Utils_append = F2(_Utils_ap);
+
+function _Utils_ap(xs, ys)
+{
+	// append Strings
+	if (typeof xs === 'string')
+	{
+		return xs + ys;
+	}
+
+	// append Lists
+	if (!xs.b)
+	{
+		return ys;
+	}
+	var root = _List_Cons(xs.a, ys);
+	xs = xs.b
+	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		curr = curr.b = _List_Cons(xs.a, ys);
+	}
+	return root;
+}
+
+
+
 var _List_Nil_UNUSED = { $: 0 };
 var _List_Nil = { $: '[]' };
 
@@ -605,190 +789,6 @@ function _Debug_regionToString(region)
 		return 'on line ' + region.start.line;
 	}
 	return 'on lines ' + region.start.line + ' through ' + region.end.line;
-}
-
-
-
-// EQUALITY
-
-function _Utils_eq(x, y)
-{
-	for (
-		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
-		isEqual && (pair = stack.pop());
-		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
-		)
-	{}
-
-	return isEqual;
-}
-
-function _Utils_eqHelp(x, y, depth, stack)
-{
-	if (x === y)
-	{
-		return true;
-	}
-
-	if (typeof x !== 'object' || x === null || y === null)
-	{
-		typeof x === 'function' && _Debug_crash(5);
-		return false;
-	}
-
-	if (depth > 100)
-	{
-		stack.push(_Utils_Tuple2(x,y));
-		return true;
-	}
-
-	/**/
-	if (x.$ === 'Set_elm_builtin')
-	{
-		x = $elm$core$Set$toList(x);
-		y = $elm$core$Set$toList(y);
-	}
-	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	/**_UNUSED/
-	if (x.$ < 0)
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	for (var key in x)
-	{
-		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-var _Utils_equal = F2(_Utils_eq);
-var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
-
-
-
-// COMPARISONS
-
-// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
-// the particular integer values assigned to LT, EQ, and GT.
-
-function _Utils_cmp(x, y, ord)
-{
-	if (typeof x !== 'object')
-	{
-		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
-	}
-
-	/**/
-	if (x instanceof String)
-	{
-		var a = x.valueOf();
-		var b = y.valueOf();
-		return a === b ? 0 : a < b ? -1 : 1;
-	}
-	//*/
-
-	/**_UNUSED/
-	if (typeof x.$ === 'undefined')
-	//*/
-	/**/
-	if (x.$[0] === '#')
-	//*/
-	{
-		return (ord = _Utils_cmp(x.a, y.a))
-			? ord
-			: (ord = _Utils_cmp(x.b, y.b))
-				? ord
-				: _Utils_cmp(x.c, y.c);
-	}
-
-	// traverse conses until end of a list or a mismatch
-	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
-	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
-}
-
-var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
-var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
-var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
-var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
-
-var _Utils_compare = F2(function(x, y)
-{
-	var n = _Utils_cmp(x, y);
-	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
-});
-
-
-// COMMON VALUES
-
-var _Utils_Tuple0_UNUSED = 0;
-var _Utils_Tuple0 = { $: '#0' };
-
-function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
-function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
-
-function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
-function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
-
-function _Utils_chr_UNUSED(c) { return c; }
-function _Utils_chr(c) { return new String(c); }
-
-
-// RECORDS
-
-function _Utils_update(oldRecord, updatedFields)
-{
-	var newRecord = {};
-
-	for (var key in oldRecord)
-	{
-		newRecord[key] = oldRecord[key];
-	}
-
-	for (var key in updatedFields)
-	{
-		newRecord[key] = updatedFields[key];
-	}
-
-	return newRecord;
-}
-
-
-// APPEND
-
-var _Utils_append = F2(_Utils_ap);
-
-function _Utils_ap(xs, ys)
-{
-	// append Strings
-	if (typeof xs === 'string')
-	{
-		return xs + ys;
-	}
-
-	// append Lists
-	if (!xs.b)
-	{
-		return ys;
-	}
-	var root = _List_Cons(xs.a, ys);
-	xs = xs.b
-	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		curr = curr.b = _List_Cons(xs.a, ys);
-	}
-	return root;
 }
 
 
@@ -4358,43 +4358,6 @@ function _Browser_load(url)
 
 
 
-var _Bitwise_and = F2(function(a, b)
-{
-	return a & b;
-});
-
-var _Bitwise_or = F2(function(a, b)
-{
-	return a | b;
-});
-
-var _Bitwise_xor = F2(function(a, b)
-{
-	return a ^ b;
-});
-
-function _Bitwise_complement(a)
-{
-	return ~a;
-};
-
-var _Bitwise_shiftLeftBy = F2(function(offset, a)
-{
-	return a << offset;
-});
-
-var _Bitwise_shiftRightBy = F2(function(offset, a)
-{
-	return a >> offset;
-});
-
-var _Bitwise_shiftRightZfBy = F2(function(offset, a)
-{
-	return a >>> offset;
-});
-
-
-
 function _Time_now(millisToPosix)
 {
 	return _Scheduler_binding(function(callback)
@@ -4438,33 +4401,52 @@ function _Time_getZoneName()
 		callback(_Scheduler_succeed(name));
 	});
 }
+
+
+
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+var $author$project$Maze$Tick = {$: 'Tick'};
+var $elm$core$Basics$always = F2(
+	function (a, _v0) {
+		return a;
+	});
 var $elm$core$Basics$EQ = {$: 'EQ'};
+var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
-var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
-var $elm$core$Array$foldr = F3(
-	function (func, baseCase, _v0) {
-		var tree = _v0.c;
-		var tail = _v0.d;
-		var helper = F2(
-			function (node, acc) {
-				if (node.$ === 'SubTree') {
-					var subTree = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
-				} else {
-					var values = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
-				}
-			});
-		return A3(
-			$elm$core$Elm$JsArray$foldr,
-			helper,
-			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
-			tree);
-	});
-var $elm$core$Array$toList = function (array) {
-	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
-};
 var $elm$core$Dict$foldr = F3(
 	function (func, acc, t) {
 		foldr:
@@ -4517,7 +4499,30 @@ var $elm$core$Set$toList = function (_v0) {
 	var dict = _v0.a;
 	return $elm$core$Dict$keys(dict);
 };
-var $elm$core$Basics$GT = {$: 'GT'};
+var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
+var $elm$core$Array$foldr = F3(
+	function (func, baseCase, _v0) {
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
+				} else {
+					var values = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
+				}
+			});
+		return A3(
+			$elm$core$Elm$JsArray$foldr,
+			helper,
+			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
+			tree);
+	});
+var $elm$core$Array$toList = function (array) {
+	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
+};
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -5227,372 +5232,18 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Maze$AddLink = F2(
+var $elm$time$Time$Every = F2(
 	function (a, b) {
-		return {$: 'AddLink', a: a, b: b};
+		return {$: 'Every', a: a, b: b};
 	});
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $author$project$Maze$cHeight = 600;
-var $author$project$Maze$cWidth = 600;
-var $author$project$Maze$cellWidth = 20;
-var $elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
-		}
-	});
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
-};
-var $elm$core$List$concatMap = F2(
-	function (f, list) {
-		return $elm$core$List$concat(
-			A2($elm$core$List$map, f, list));
+var $elm$time$Time$State = F2(
+	function (taggers, processes) {
+		return {processes: processes, taggers: taggers};
 	});
 var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
 var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
-var $elm$core$Array$fromListHelp = F3(
-	function (list, nodeList, nodeListSize) {
-		fromListHelp:
-		while (true) {
-			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
-			var jsArray = _v0.a;
-			var remainingItems = _v0.b;
-			if (_Utils_cmp(
-				$elm$core$Elm$JsArray$length(jsArray),
-				$elm$core$Array$branchFactor) < 0) {
-				return A2(
-					$elm$core$Array$builderToArray,
-					true,
-					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
-			} else {
-				var $temp$list = remainingItems,
-					$temp$nodeList = A2(
-					$elm$core$List$cons,
-					$elm$core$Array$Leaf(jsArray),
-					nodeList),
-					$temp$nodeListSize = nodeListSize + 1;
-				list = $temp$list;
-				nodeList = $temp$nodeList;
-				nodeListSize = $temp$nodeListSize;
-				continue fromListHelp;
-			}
-		}
-	});
-var $elm$core$Array$fromList = function (list) {
-	if (!list.b) {
-		return $elm$core$Array$empty;
-	} else {
-		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
-	}
-};
-var $elm$random$Random$Generate = function (a) {
-	return {$: 'Generate', a: a};
-};
-var $elm$random$Random$Seed = F2(
-	function (a, b) {
-		return {$: 'Seed', a: a, b: b};
-	});
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$random$Random$next = function (_v0) {
-	var state0 = _v0.a;
-	var incr = _v0.b;
-	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
-};
-var $elm$random$Random$initialSeed = function (x) {
-	var _v0 = $elm$random$Random$next(
-		A2($elm$random$Random$Seed, 0, 1013904223));
-	var state1 = _v0.a;
-	var incr = _v0.b;
-	var state2 = (state1 + x) >>> 0;
-	return $elm$random$Random$next(
-		A2($elm$random$Random$Seed, state2, incr));
-};
-var $elm$time$Time$Name = function (a) {
-	return {$: 'Name', a: a};
-};
-var $elm$time$Time$Offset = function (a) {
-	return {$: 'Offset', a: a};
-};
-var $elm$time$Time$Zone = F2(
-	function (a, b) {
-		return {$: 'Zone', a: a, b: b};
-	});
-var $elm$time$Time$customZone = $elm$time$Time$Zone;
-var $elm$time$Time$Posix = function (a) {
-	return {$: 'Posix', a: a};
-};
-var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
-var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
-var $elm$time$Time$posixToMillis = function (_v0) {
-	var millis = _v0.a;
-	return millis;
-};
-var $elm$random$Random$init = A2(
-	$elm$core$Task$andThen,
-	function (time) {
-		return $elm$core$Task$succeed(
-			$elm$random$Random$initialSeed(
-				$elm$time$Time$posixToMillis(time)));
-	},
-	$elm$time$Time$now);
-var $elm$random$Random$step = F2(
-	function (_v0, seed) {
-		var generator = _v0.a;
-		return generator(seed);
-	});
-var $elm$random$Random$onEffects = F3(
-	function (router, commands, seed) {
-		if (!commands.b) {
-			return $elm$core$Task$succeed(seed);
-		} else {
-			var generator = commands.a.a;
-			var rest = commands.b;
-			var _v1 = A2($elm$random$Random$step, generator, seed);
-			var value = _v1.a;
-			var newSeed = _v1.b;
-			return A2(
-				$elm$core$Task$andThen,
-				function (_v2) {
-					return A3($elm$random$Random$onEffects, router, rest, newSeed);
-				},
-				A2($elm$core$Platform$sendToApp, router, value));
-		}
-	});
-var $elm$random$Random$onSelfMsg = F3(
-	function (_v0, _v1, seed) {
-		return $elm$core$Task$succeed(seed);
-	});
-var $elm$random$Random$Generator = function (a) {
-	return {$: 'Generator', a: a};
-};
-var $elm$random$Random$map = F2(
-	function (func, _v0) {
-		var genA = _v0.a;
-		return $elm$random$Random$Generator(
-			function (seed0) {
-				var _v1 = genA(seed0);
-				var a = _v1.a;
-				var seed1 = _v1.b;
-				return _Utils_Tuple2(
-					func(a),
-					seed1);
-			});
-	});
-var $elm$random$Random$cmdMap = F2(
-	function (func, _v0) {
-		var generator = _v0.a;
-		return $elm$random$Random$Generate(
-			A2($elm$random$Random$map, func, generator));
-	});
-_Platform_effectManagers['Random'] = _Platform_createManager($elm$random$Random$init, $elm$random$Random$onEffects, $elm$random$Random$onSelfMsg, $elm$random$Random$cmdMap);
-var $elm$random$Random$command = _Platform_leaf('Random');
-var $elm$random$Random$generate = F2(
-	function (tagger, generator) {
-		return $elm$random$Random$command(
-			$elm$random$Random$Generate(
-				A2($elm$random$Random$map, tagger, generator)));
-	});
-var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $elm$core$Bitwise$xor = _Bitwise_xor;
-var $elm$random$Random$peel = function (_v0) {
-	var state = _v0.a;
-	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
-	return ((word >>> 22) ^ word) >>> 0;
-};
-var $elm$random$Random$int = F2(
-	function (a, b) {
-		return $elm$random$Random$Generator(
-			function (seed0) {
-				var _v0 = (_Utils_cmp(a, b) < 0) ? _Utils_Tuple2(a, b) : _Utils_Tuple2(b, a);
-				var lo = _v0.a;
-				var hi = _v0.b;
-				var range = (hi - lo) + 1;
-				if (!((range - 1) & range)) {
-					return _Utils_Tuple2(
-						(((range - 1) & $elm$random$Random$peel(seed0)) >>> 0) + lo,
-						$elm$random$Random$next(seed0));
-				} else {
-					var threshhold = (((-range) >>> 0) % range) >>> 0;
-					var accountForBias = function (seed) {
-						accountForBias:
-						while (true) {
-							var x = $elm$random$Random$peel(seed);
-							var seedN = $elm$random$Random$next(seed);
-							if (_Utils_cmp(x, threshhold) < 0) {
-								var $temp$seed = seedN;
-								seed = $temp$seed;
-								continue accountForBias;
-							} else {
-								return _Utils_Tuple2((x % range) + lo, seedN);
-							}
-						}
-					};
-					return accountForBias(seed0);
-				}
-			});
-	});
-var $elm$core$Array$length = function (_v0) {
-	var len = _v0.a;
-	return len;
-};
-var $elm$core$Debug$log = _Debug_log;
-var $author$project$Maze$eastNeighbor = function (_v0) {
-	var x = _v0.a;
-	var y = _v0.b;
-	return _Utils_Tuple2(x + 1, y);
-};
-var $author$project$Maze$northNeighbor = function (_v0) {
-	var x = _v0.a;
-	var y = _v0.b;
-	return _Utils_Tuple2(x, y - 1);
-};
-var $author$project$Maze$northEastNeighbors = F2(
-	function (width, p1) {
-		var ns = _List_Nil;
-		var _v0 = p1;
-		var i = _v0.a;
-		var j = _v0.b;
-		var lg = A2(
-			$elm$core$Debug$log,
-			'width',
-			_Utils_Tuple2(i, width));
-		var ns2 = (_Utils_cmp(i, width) < 0) ? A2(
-			$elm$core$List$cons,
-			$author$project$Maze$eastNeighbor(p1),
-			ns) : ns;
-		var ns3 = (j > 0) ? A2(
-			$elm$core$List$cons,
-			$author$project$Maze$northNeighbor(p1),
-			ns2) : ns2;
-		return ns3;
-	});
-var $author$project$Maze$generatorLinkArgs = F3(
-	function (height, width, p1) {
-		var ns = $elm$core$Array$fromList(
-			A2($author$project$Maze$northEastNeighbors, width, p1));
-		var lg = A2($elm$core$Debug$log, 'ns', ns);
-		return A2(
-			$elm$random$Random$int,
-			0,
-			$elm$core$Array$length(ns) - 1);
-	});
-var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
-var $elm$core$Basics$ge = _Utils_ge;
-var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
-var $elm$core$Array$getHelp = F3(
-	function (shift, index, tree) {
-		getHelp:
-		while (true) {
-			var pos = $elm$core$Array$bitMask & (index >>> shift);
-			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
-			if (_v0.$ === 'SubTree') {
-				var subTree = _v0.a;
-				var $temp$shift = shift - $elm$core$Array$shiftStep,
-					$temp$index = index,
-					$temp$tree = subTree;
-				shift = $temp$shift;
-				index = $temp$index;
-				tree = $temp$tree;
-				continue getHelp;
-			} else {
-				var values = _v0.a;
-				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
-			}
-		}
-	});
-var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
-var $elm$core$Array$tailIndex = function (len) {
-	return (len >>> 5) << 5;
-};
-var $elm$core$Array$get = F2(
-	function (index, _v0) {
-		var len = _v0.a;
-		var startShift = _v0.b;
-		var tree = _v0.c;
-		var tail = _v0.d;
-		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
-			index,
-			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
-			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
-			A3($elm$core$Array$getHelp, startShift, index, tree)));
-	});
-var $elm$core$Basics$round = _Basics_round;
-var $author$project$Maze$init = function (_v0) {
-	var width = ((($author$project$Maze$cWidth - 10) / $author$project$Maze$cellWidth) | 0) - 1;
-	var height = ((($author$project$Maze$cHeight - 10) / $author$project$Maze$cellWidth) | 0) - 1;
-	var cells = A2(
-		$elm$core$List$concatMap,
-		function (j) {
-			return A2(
-				$elm$core$List$map,
-				$elm$core$Basics$apR(j),
-				A2(
-					$elm$core$List$map,
-					F2(
-						function (i, k) {
-							return _Utils_Tuple2(i, k);
-						}),
-					A2(
-						$elm$core$List$map,
-						$elm$core$Basics$toFloat,
-						A2(
-							$elm$core$List$range,
-							0,
-							$elm$core$Basics$round(width)))));
-		},
-		A2(
-			$elm$core$List$map,
-			$elm$core$Basics$toFloat,
-			A2(
-				$elm$core$List$range,
-				0,
-				$elm$core$Basics$round(height))));
-	var batch = A2(
-		$elm$core$List$map,
-		function (_v1) {
-			var i = _v1.a;
-			var j = _v1.b;
-			var p1 = _Utils_Tuple2(i, j);
-			return A2(
-				$elm$random$Random$generate,
-				function (k) {
-					return A2(
-						$author$project$Maze$AddLink,
-						p1,
-						function () {
-							var _v2 = A2(
-								$elm$core$Array$get,
-								k,
-								$elm$core$Array$fromList(
-									A2($author$project$Maze$northEastNeighbors, width, p1)));
-							if (_v2.$ === 'Just') {
-								var p2 = _v2.a;
-								return p2;
-							} else {
-								return _Utils_Tuple2(-2, -2);
-							}
-						}());
-				},
-				A3($author$project$Maze$generatorLinkArgs, height, width, p1));
-		},
-		cells);
-	return _Utils_Tuple2(
-		{
-			height: $elm$core$Basics$round(height),
-			neighborhood: $elm$core$Dict$empty,
-			width: $elm$core$Basics$round(width)
-		},
-		$elm$core$Platform$Cmd$batch(batch));
-};
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $elm$time$Time$init = $elm$core$Task$succeed(
+	A2($elm$time$Time$State, $elm$core$Dict$empty, $elm$core$Dict$empty));
 var $elm$core$Basics$compare = _Utils_compare;
 var $elm$core$Dict$get = F2(
 	function (targetKey, dict) {
@@ -5733,6 +5384,318 @@ var $elm$core$Dict$insert = F3(
 			return x;
 		}
 	});
+var $elm$time$Time$addMySub = F2(
+	function (_v0, state) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		var _v1 = A2($elm$core$Dict$get, interval, state);
+		if (_v1.$ === 'Nothing') {
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				_List_fromArray(
+					[tagger]),
+				state);
+		} else {
+			var taggers = _v1.a;
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				A2($elm$core$List$cons, tagger, taggers),
+				state);
+		}
+	});
+var $elm$core$Process$kill = _Scheduler_kill;
+var $elm$core$Dict$foldl = F3(
+	function (func, acc, dict) {
+		foldl:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return acc;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var $temp$func = func,
+					$temp$acc = A3(
+					func,
+					key,
+					value,
+					A3($elm$core$Dict$foldl, func, acc, left)),
+					$temp$dict = right;
+				func = $temp$func;
+				acc = $temp$acc;
+				dict = $temp$dict;
+				continue foldl;
+			}
+		}
+	});
+var $elm$core$Dict$merge = F6(
+	function (leftStep, bothStep, rightStep, leftDict, rightDict, initialResult) {
+		var stepState = F3(
+			function (rKey, rValue, _v0) {
+				stepState:
+				while (true) {
+					var list = _v0.a;
+					var result = _v0.b;
+					if (!list.b) {
+						return _Utils_Tuple2(
+							list,
+							A3(rightStep, rKey, rValue, result));
+					} else {
+						var _v2 = list.a;
+						var lKey = _v2.a;
+						var lValue = _v2.b;
+						var rest = list.b;
+						if (_Utils_cmp(lKey, rKey) < 0) {
+							var $temp$rKey = rKey,
+								$temp$rValue = rValue,
+								$temp$_v0 = _Utils_Tuple2(
+								rest,
+								A3(leftStep, lKey, lValue, result));
+							rKey = $temp$rKey;
+							rValue = $temp$rValue;
+							_v0 = $temp$_v0;
+							continue stepState;
+						} else {
+							if (_Utils_cmp(lKey, rKey) > 0) {
+								return _Utils_Tuple2(
+									list,
+									A3(rightStep, rKey, rValue, result));
+							} else {
+								return _Utils_Tuple2(
+									rest,
+									A4(bothStep, lKey, lValue, rValue, result));
+							}
+						}
+					}
+				}
+			});
+		var _v3 = A3(
+			$elm$core$Dict$foldl,
+			stepState,
+			_Utils_Tuple2(
+				$elm$core$Dict$toList(leftDict),
+				initialResult),
+			rightDict);
+		var leftovers = _v3.a;
+		var intermediateResult = _v3.b;
+		return A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v4, result) {
+					var k = _v4.a;
+					var v = _v4.b;
+					return A3(leftStep, k, v, result);
+				}),
+			intermediateResult,
+			leftovers);
+	});
+var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$setInterval = _Time_setInterval;
+var $elm$core$Process$spawn = _Scheduler_spawn;
+var $elm$time$Time$spawnHelp = F3(
+	function (router, intervals, processes) {
+		if (!intervals.b) {
+			return $elm$core$Task$succeed(processes);
+		} else {
+			var interval = intervals.a;
+			var rest = intervals.b;
+			var spawnTimer = $elm$core$Process$spawn(
+				A2(
+					$elm$time$Time$setInterval,
+					interval,
+					A2($elm$core$Platform$sendToSelf, router, interval)));
+			var spawnRest = function (id) {
+				return A3(
+					$elm$time$Time$spawnHelp,
+					router,
+					rest,
+					A3($elm$core$Dict$insert, interval, id, processes));
+			};
+			return A2($elm$core$Task$andThen, spawnRest, spawnTimer);
+		}
+	});
+var $elm$time$Time$onEffects = F3(
+	function (router, subs, _v0) {
+		var processes = _v0.processes;
+		var rightStep = F3(
+			function (_v6, id, _v7) {
+				var spawns = _v7.a;
+				var existing = _v7.b;
+				var kills = _v7.c;
+				return _Utils_Tuple3(
+					spawns,
+					existing,
+					A2(
+						$elm$core$Task$andThen,
+						function (_v5) {
+							return kills;
+						},
+						$elm$core$Process$kill(id)));
+			});
+		var newTaggers = A3($elm$core$List$foldl, $elm$time$Time$addMySub, $elm$core$Dict$empty, subs);
+		var leftStep = F3(
+			function (interval, taggers, _v4) {
+				var spawns = _v4.a;
+				var existing = _v4.b;
+				var kills = _v4.c;
+				return _Utils_Tuple3(
+					A2($elm$core$List$cons, interval, spawns),
+					existing,
+					kills);
+			});
+		var bothStep = F4(
+			function (interval, taggers, id, _v3) {
+				var spawns = _v3.a;
+				var existing = _v3.b;
+				var kills = _v3.c;
+				return _Utils_Tuple3(
+					spawns,
+					A3($elm$core$Dict$insert, interval, id, existing),
+					kills);
+			});
+		var _v1 = A6(
+			$elm$core$Dict$merge,
+			leftStep,
+			bothStep,
+			rightStep,
+			newTaggers,
+			processes,
+			_Utils_Tuple3(
+				_List_Nil,
+				$elm$core$Dict$empty,
+				$elm$core$Task$succeed(_Utils_Tuple0)));
+		var spawnList = _v1.a;
+		var existingDict = _v1.b;
+		var killTask = _v1.c;
+		return A2(
+			$elm$core$Task$andThen,
+			function (newProcesses) {
+				return $elm$core$Task$succeed(
+					A2($elm$time$Time$State, newTaggers, newProcesses));
+			},
+			A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$time$Time$spawnHelp, router, spawnList, existingDict);
+				},
+				killTask));
+	});
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
+var $elm$time$Time$onSelfMsg = F3(
+	function (router, interval, state) {
+		var _v0 = A2($elm$core$Dict$get, interval, state.taggers);
+		if (_v0.$ === 'Nothing') {
+			return $elm$core$Task$succeed(state);
+		} else {
+			var taggers = _v0.a;
+			var tellTaggers = function (time) {
+				return $elm$core$Task$sequence(
+					A2(
+						$elm$core$List$map,
+						function (tagger) {
+							return A2(
+								$elm$core$Platform$sendToApp,
+								router,
+								tagger(time));
+						},
+						taggers));
+			};
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v1) {
+					return $elm$core$Task$succeed(state);
+				},
+				A2($elm$core$Task$andThen, tellTaggers, $elm$time$Time$now));
+		}
+	});
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$time$Time$subMap = F2(
+	function (f, _v0) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		return A2(
+			$elm$time$Time$Every,
+			interval,
+			A2($elm$core$Basics$composeL, f, tagger));
+	});
+_Platform_effectManagers['Time'] = _Platform_createManager($elm$time$Time$init, $elm$time$Time$onEffects, $elm$time$Time$onSelfMsg, 0, $elm$time$Time$subMap);
+var $elm$time$Time$subscription = _Platform_leaf('Time');
+var $elm$time$Time$every = F2(
+	function (interval, tagger) {
+		return $elm$time$Time$subscription(
+			A2($elm$time$Time$Every, interval, tagger));
+	});
+var $andrewMacmurray$elm_delay$Delay$Millisecond = {$: 'Millisecond'};
+var $author$project$Maze$Reset = {$: 'Reset'};
+var $andrewMacmurray$elm_delay$Delay$Duration = F2(
+	function (a, b) {
+		return {$: 'Duration', a: a, b: b};
+	});
+var $elm$core$Process$sleep = _Process_sleep;
+var $andrewMacmurray$elm_delay$Delay$after_ = F2(
+	function (time, msg) {
+		return A2(
+			$elm$core$Task$perform,
+			$elm$core$Basics$always(msg),
+			$elm$core$Process$sleep(time));
+	});
+var $andrewMacmurray$elm_delay$Delay$Minute = {$: 'Minute'};
+var $andrewMacmurray$elm_delay$Delay$Second = {$: 'Second'};
+var $andrewMacmurray$elm_delay$Delay$toMillis = function (_v0) {
+	var t = _v0.a;
+	var u = _v0.b;
+	switch (u.$) {
+		case 'Millisecond':
+			return t;
+		case 'Second':
+			return 1000 * t;
+		case 'Minute':
+			return $andrewMacmurray$elm_delay$Delay$toMillis(
+				A2($andrewMacmurray$elm_delay$Delay$Duration, 60 * t, $andrewMacmurray$elm_delay$Delay$Second));
+		default:
+			return $andrewMacmurray$elm_delay$Delay$toMillis(
+				A2($andrewMacmurray$elm_delay$Delay$Duration, 60 * t, $andrewMacmurray$elm_delay$Delay$Minute));
+	}
+};
+var $andrewMacmurray$elm_delay$Delay$after = F3(
+	function (time, unit, msg) {
+		return A2(
+			$andrewMacmurray$elm_delay$Delay$after_,
+			$andrewMacmurray$elm_delay$Delay$toMillis(
+				A2($andrewMacmurray$elm_delay$Delay$Duration, time, unit)),
+			msg);
+	});
+var $author$project$Maze$init = function (_v0) {
+	return _Utils_Tuple2(
+		{animationDelay: 20, canvasSize: 400, cellSize: 20, height: 0, linkQueue: _List_Nil, neighborhood: $elm$core$Dict$empty, wallWidth: 1, width: 0},
+		A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+};
+var $author$project$Maze$AddLink = F2(
+	function (a, b) {
+		return {$: 'AddLink', a: a, b: b};
+	});
 var $author$project$Maze$addLink = F3(
 	function (p1, p2, ns) {
 		var nsP2 = function () {
@@ -5761,20 +5724,433 @@ var $author$project$Maze$addLink = F3(
 			nsP2N,
 			A3($elm$core$Dict$insert, p1, nsP1N, ns));
 	});
-var $author$project$Maze$update = F2(
-	function (msg, model) {
-		if (msg.$ === 'AddLink') {
-			var p1 = msg.a;
-			var p2 = msg.b;
-			return _Utils_update(
-				model,
-				{
-					neighborhood: A3($author$project$Maze$addLink, p1, p2, model.neighborhood)
-				});
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
 		} else {
-			return model;
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
 		}
 	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$core$List$concatMap = F2(
+	function (f, list) {
+		return $elm$core$List$concat(
+			A2($elm$core$List$map, f, list));
+	});
+var $elm$core$Array$fromListHelp = F3(
+	function (list, nodeList, nodeListSize) {
+		fromListHelp:
+		while (true) {
+			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
+			var jsArray = _v0.a;
+			var remainingItems = _v0.b;
+			if (_Utils_cmp(
+				$elm$core$Elm$JsArray$length(jsArray),
+				$elm$core$Array$branchFactor) < 0) {
+				return A2(
+					$elm$core$Array$builderToArray,
+					true,
+					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
+			} else {
+				var $temp$list = remainingItems,
+					$temp$nodeList = A2(
+					$elm$core$List$cons,
+					$elm$core$Array$Leaf(jsArray),
+					nodeList),
+					$temp$nodeListSize = nodeListSize + 1;
+				list = $temp$list;
+				nodeList = $temp$nodeList;
+				nodeListSize = $temp$nodeListSize;
+				continue fromListHelp;
+			}
+		}
+	});
+var $elm$core$Array$fromList = function (list) {
+	if (!list.b) {
+		return $elm$core$Array$empty;
+	} else {
+		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
+	}
+};
+var $elm$random$Random$Generate = function (a) {
+	return {$: 'Generate', a: a};
+};
+var $elm$random$Random$Seed = F2(
+	function (a, b) {
+		return {$: 'Seed', a: a, b: b};
+	});
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
+};
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $elm$random$Random$init = A2(
+	$elm$core$Task$andThen,
+	function (time) {
+		return $elm$core$Task$succeed(
+			$elm$random$Random$initialSeed(
+				$elm$time$Time$posixToMillis(time)));
+	},
+	$elm$time$Time$now);
+var $elm$random$Random$step = F2(
+	function (_v0, seed) {
+		var generator = _v0.a;
+		return generator(seed);
+	});
+var $elm$random$Random$onEffects = F3(
+	function (router, commands, seed) {
+		if (!commands.b) {
+			return $elm$core$Task$succeed(seed);
+		} else {
+			var generator = commands.a.a;
+			var rest = commands.b;
+			var _v1 = A2($elm$random$Random$step, generator, seed);
+			var value = _v1.a;
+			var newSeed = _v1.b;
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$random$Random$onEffects, router, rest, newSeed);
+				},
+				A2($elm$core$Platform$sendToApp, router, value));
+		}
+	});
+var $elm$random$Random$onSelfMsg = F3(
+	function (_v0, _v1, seed) {
+		return $elm$core$Task$succeed(seed);
+	});
+var $elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
+};
+var $elm$random$Random$map = F2(
+	function (func, _v0) {
+		var genA = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v1 = genA(seed0);
+				var a = _v1.a;
+				var seed1 = _v1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var $elm$random$Random$cmdMap = F2(
+	function (func, _v0) {
+		var generator = _v0.a;
+		return $elm$random$Random$Generate(
+			A2($elm$random$Random$map, func, generator));
+	});
+_Platform_effectManagers['Random'] = _Platform_createManager($elm$random$Random$init, $elm$random$Random$onEffects, $elm$random$Random$onSelfMsg, $elm$random$Random$cmdMap);
+var $elm$random$Random$command = _Platform_leaf('Random');
+var $elm$random$Random$generate = F2(
+	function (tagger, generator) {
+		return $elm$random$Random$command(
+			$elm$random$Random$Generate(
+				A2($elm$random$Random$map, tagger, generator)));
+	});
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$core$Bitwise$xor = _Bitwise_xor;
+var $elm$random$Random$peel = function (_v0) {
+	var state = _v0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var $elm$random$Random$int = F2(
+	function (a, b) {
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v0 = (_Utils_cmp(a, b) < 0) ? _Utils_Tuple2(a, b) : _Utils_Tuple2(b, a);
+				var lo = _v0.a;
+				var hi = _v0.b;
+				var range = (hi - lo) + 1;
+				if (!((range - 1) & range)) {
+					return _Utils_Tuple2(
+						(((range - 1) & $elm$random$Random$peel(seed0)) >>> 0) + lo,
+						$elm$random$Random$next(seed0));
+				} else {
+					var threshhold = (((-range) >>> 0) % range) >>> 0;
+					var accountForBias = function (seed) {
+						accountForBias:
+						while (true) {
+							var x = $elm$random$Random$peel(seed);
+							var seedN = $elm$random$Random$next(seed);
+							if (_Utils_cmp(x, threshhold) < 0) {
+								var $temp$seed = seedN;
+								seed = $temp$seed;
+								continue accountForBias;
+							} else {
+								return _Utils_Tuple2((x % range) + lo, seedN);
+							}
+						}
+					};
+					return accountForBias(seed0);
+				}
+			});
+	});
+var $elm$core$Array$length = function (_v0) {
+	var len = _v0.a;
+	return len;
+};
+var $author$project$Maze$eastNeighbor = function (_v0) {
+	var x = _v0.a;
+	var y = _v0.b;
+	return _Utils_Tuple2(x + 1, y);
+};
+var $author$project$Maze$northNeighbor = function (_v0) {
+	var x = _v0.a;
+	var y = _v0.b;
+	return _Utils_Tuple2(x, y - 1);
+};
+var $author$project$Maze$northEastNeighbors = F2(
+	function (width, p1) {
+		var ns = _List_Nil;
+		var _v0 = p1;
+		var i = _v0.a;
+		var j = _v0.b;
+		var ns2 = (_Utils_cmp(i, width) < 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$eastNeighbor(p1),
+			ns) : ns;
+		var ns3 = (j > 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$northNeighbor(p1),
+			ns2) : ns2;
+		return ns3;
+	});
+var $author$project$Maze$generatorLinkArgs = F3(
+	function (height, width, p1) {
+		var ns = $elm$core$Array$fromList(
+			A2($author$project$Maze$northEastNeighbors, width, p1));
+		return A2(
+			$elm$random$Random$int,
+			0,
+			$elm$core$Array$length(ns) - 1);
+	});
+var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
+var $elm$core$Basics$ge = _Utils_ge;
+var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
+var $elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = $elm$core$Array$bitMask & (index >>> shift);
+			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_v0.$ === 'SubTree') {
+				var subTree = _v0.a;
+				var $temp$shift = shift - $elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _v0.a;
+				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var $elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var $elm$core$Array$get = F2(
+	function (index, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
+			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
+			A3($elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$core$Basics$round = _Basics_round;
+var $author$project$Maze$update = F2(
+	function (msg, model) {
+		switch (msg.$) {
+			case 'Reset':
+				var width = (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1;
+				var height = (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1;
+				var cells = A2(
+					$elm$core$List$concatMap,
+					function (j) {
+						return A2(
+							$elm$core$List$map,
+							$elm$core$Basics$apR(j),
+							A2(
+								$elm$core$List$map,
+								F2(
+									function (i, k) {
+										return _Utils_Tuple2(i, k);
+									}),
+								A2(
+									$elm$core$List$map,
+									$elm$core$Basics$toFloat,
+									A2(
+										$elm$core$List$range,
+										0,
+										$elm$core$Basics$round(width)))));
+					},
+					A2(
+						$elm$core$List$map,
+						$elm$core$Basics$toFloat,
+						A2(
+							$elm$core$List$range,
+							0,
+							$elm$core$Basics$round(height))));
+				var batch = A2(
+					$elm$core$List$map,
+					function (_v1) {
+						var i = _v1.a;
+						var j = _v1.b;
+						var p1 = _Utils_Tuple2(i, j);
+						return A2(
+							$elm$random$Random$generate,
+							function (k) {
+								return A2(
+									$author$project$Maze$AddLink,
+									p1,
+									function () {
+										var _v2 = A2(
+											$elm$core$Array$get,
+											k,
+											$elm$core$Array$fromList(
+												A2($author$project$Maze$northEastNeighbors, width, p1)));
+										if (_v2.$ === 'Just') {
+											var p2 = _v2.a;
+											return p2;
+										} else {
+											return _Utils_Tuple2(-2, -2);
+										}
+									}());
+							},
+							A3($author$project$Maze$generatorLinkArgs, height, width, p1));
+					},
+					cells);
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							height: $elm$core$Basics$round(height),
+							linkQueue: _List_Nil,
+							neighborhood: $elm$core$Dict$empty,
+							width: $elm$core$Basics$round(width)
+						}),
+					$elm$core$Platform$Cmd$batch(batch));
+			case 'AddLink':
+				var p1 = msg.a;
+				var p2 = msg.b;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							linkQueue: A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(p1, p2),
+								model.linkQueue)
+						}),
+					$elm$core$Platform$Cmd$none);
+			case 'Tick':
+				return _Utils_Tuple2(
+					function () {
+						var _v3 = model.linkQueue;
+						if (!_v3.b) {
+							return model;
+						} else {
+							var _v4 = _v3.a;
+							var p1 = _v4.a;
+							var p2 = _v4.b;
+							var rest = _v3.b;
+							return _Utils_update(
+								model,
+								{
+									linkQueue: rest,
+									neighborhood: A3($author$project$Maze$addLink, p1, p2, model.neighborhood)
+								});
+						}
+					}(),
+					$elm$core$Platform$Cmd$none);
+			case 'AnimationDelay':
+				var f = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{animationDelay: f}),
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+			case 'WallWidth':
+				var f = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{wallWidth: f}),
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+			case 'CellSize':
+				var f = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{cellSize: f}),
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+			case 'CanvasSize':
+				var f = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							canvasSize: $elm$core$Basics$round(f),
+							height: (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1,
+							width: (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1
+						}),
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+			case 'Animate':
+				return _Utils_Tuple2(
+					model,
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+			default:
+				var s = msg.a;
+				return _Utils_Tuple2(
+					model,
+					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
+		}
+	});
+var $author$project$Maze$Animate = {$: 'Animate'};
+var $author$project$Maze$AnimationDelay = function (a) {
+	return {$: 'AnimationDelay', a: a};
+};
+var $author$project$Maze$CanvasSize = function (a) {
+	return {$: 'CanvasSize', a: a};
+};
+var $author$project$Maze$CellSize = function (a) {
+	return {$: 'CellSize', a: a};
+};
+var $author$project$Maze$WallWidth = function (a) {
+	return {$: 'WallWidth', a: a};
+};
 var $joakin$elm_canvas$Canvas$Internal$Canvas$LineTo = function (a) {
 	return {$: 'LineTo', a: a};
 };
@@ -6046,7 +6422,6 @@ var $joakin$elm_canvas$Canvas$Settings$stroke = function (color) {
 	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp(
 		$joakin$elm_canvas$Canvas$Internal$Canvas$Stroke(color));
 };
-var $author$project$Maze$strokeWidth = 1;
 var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommands = function (a) {
 	return {$: 'SettingCommands', a: a};
 };
@@ -6161,12 +6536,13 @@ var $author$project$Maze$westNeighbor = function (_v0) {
 	return _Utils_Tuple2(x - 1, y);
 };
 var $author$project$Maze$cell = F3(
-	function (ns, i, j) {
-		var w = $author$project$Maze$cellWidth;
+	function (model, i, j) {
+		var w = model.cellSize;
 		var x1 = 4 + (i * w);
 		var x2 = x1 + w;
 		var y1 = 4 + (j * w);
 		var y2 = y1 + w;
+		var ns = model.neighborhood;
 		return A2(
 			$joakin$elm_canvas$Canvas$shapes,
 			_List_fromArray(
@@ -6178,7 +6554,7 @@ var $author$project$Maze$cell = F3(
 						[
 							A2($joakin$elm_canvas$Canvas$Settings$Advanced$translate, 0, 0)
 						])),
-					$joakin$elm_canvas$Canvas$Settings$Line$lineWidth($author$project$Maze$strokeWidth)
+					$joakin$elm_canvas$Canvas$Settings$Line$lineWidth(model.wallWidth)
 				]),
 			_List_fromArray(
 				[
@@ -6239,8 +6615,112 @@ var $joakin$elm_canvas$Canvas$clear = F3(
 				drawable: A3($joakin$elm_canvas$Canvas$Internal$Canvas$DrawableClear, point, w, h)
 			});
 	});
-var $elm$html$Html$canvas = _VirtualDom_node('canvas');
-var $joakin$elm_canvas$Canvas$cnvs = A2($elm$html$Html$canvas, _List_Nil, _List_Nil);
+var $aforemny$material_components_web_elm$Material$Button$Internal$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $aforemny$material_components_web_elm$Material$Button$config = $aforemny$material_components_web_elm$Material$Button$Internal$Config(
+	{additionalAttributes: _List_Nil, dense: false, disabled: false, href: $elm$core$Maybe$Nothing, icon: $elm$core$Maybe$Nothing, onClick: $elm$core$Maybe$Nothing, target: $elm$core$Maybe$Nothing, trailingIcon: false});
+var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$core$String$fromFloat = _String_fromNumber;
+var $elm$html$Html$h4 = _VirtualDom_node('h4');
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$max = $elm$html$Html$Attributes$stringProperty('max');
+var $elm$html$Html$Attributes$min = $elm$html$Html$Attributes$stringProperty('min');
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$option = _VirtualDom_node('option');
+var $aforemny$material_components_web_elm$Material$Button$Raised = {$: 'Raised'};
+var $elm$html$Html$a = _VirtualDom_node('a');
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $aforemny$material_components_web_elm$Material$Button$clickHandler = function (_v0) {
+	var onClick = _v0.a.onClick;
+	return A2($elm$core$Maybe$map, $elm$html$Html$Events$onClick, onClick);
+};
+var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
+var $aforemny$material_components_web_elm$Material$Button$denseCs = function (_v0) {
+	var dense = _v0.a.dense;
+	return dense ? $elm$core$Maybe$Just(
+		$elm$html$Html$Attributes$class('mdc-button--dense')) : $elm$core$Maybe$Nothing;
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $aforemny$material_components_web_elm$Material$Button$disabledAttr = function (_v0) {
+	var disabled = _v0.a.disabled;
+	return $elm$core$Maybe$Just(
+		$elm$html$Html$Attributes$disabled(disabled));
+};
 var $elm$virtual_dom$VirtualDom$property = F2(
 	function (key, value) {
 		return A2(
@@ -6249,6 +6729,204 @@ var $elm$virtual_dom$VirtualDom$property = F2(
 			_VirtualDom_noJavaScriptOrHtmlUri(value));
 	});
 var $elm$html$Html$Attributes$property = $elm$virtual_dom$VirtualDom$property;
+var $aforemny$material_components_web_elm$Material$Button$disabledProp = function (_v0) {
+	var disabled = _v0.a.disabled;
+	return $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$Attributes$property,
+			'disabled',
+			$elm$json$Json$Encode$bool(disabled)));
+};
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $elm$html$Html$Attributes$href = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'href',
+		_VirtualDom_noJavaScriptUri(url));
+};
+var $aforemny$material_components_web_elm$Material$Button$hrefAttr = function (_v0) {
+	var href = _v0.a.href;
+	return A2($elm$core$Maybe$map, $elm$html$Html$Attributes$href, href);
+};
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $aforemny$material_components_web_elm$Material$Button$labelElt = function (label) {
+	return $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mdc-button__label')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(label)
+				])));
+};
+var $elm$virtual_dom$VirtualDom$attribute = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_attribute,
+			_VirtualDom_noOnOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
+var $elm$html$Html$i = _VirtualDom_node('i');
+var $aforemny$material_components_web_elm$Material$Button$iconElt = function (_v0) {
+	var icon = _v0.a.icon;
+	return A2(
+		$elm$core$Maybe$map,
+		function (iconName) {
+			return A2(
+				$elm$html$Html$i,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mdc-button__icon material-icons'),
+						A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(iconName)
+					]));
+		},
+		icon);
+};
+var $elm$core$Basics$not = _Basics_not;
+var $aforemny$material_components_web_elm$Material$Button$leadingIconElt = function (config_) {
+	var trailingIcon = config_.a.trailingIcon;
+	return (!trailingIcon) ? $aforemny$material_components_web_elm$Material$Button$iconElt(config_) : $elm$core$Maybe$Nothing;
+};
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $elm$virtual_dom$VirtualDom$node = function (tag) {
+	return _VirtualDom_node(
+		_VirtualDom_noScript(tag));
+};
+var $elm$html$Html$node = $elm$virtual_dom$VirtualDom$node;
+var $aforemny$material_components_web_elm$Material$Button$rootCs = $elm$core$Maybe$Just(
+	$elm$html$Html$Attributes$class('mdc-button'));
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $aforemny$material_components_web_elm$Material$Button$tabIndexProp = function (_v0) {
+	var disabled = _v0.a.disabled;
+	return disabled ? $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$Attributes$property,
+			'tabIndex',
+			$elm$json$Json$Encode$int(-1))) : $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$Attributes$property,
+			'tabIndex',
+			$elm$json$Json$Encode$int(0)));
+};
+var $elm$html$Html$Attributes$target = $elm$html$Html$Attributes$stringProperty('target');
+var $aforemny$material_components_web_elm$Material$Button$targetAttr = function (_v0) {
+	var href = _v0.a.href;
+	var target = _v0.a.target;
+	return (!_Utils_eq(href, $elm$core$Maybe$Nothing)) ? A2($elm$core$Maybe$map, $elm$html$Html$Attributes$target, target) : $elm$core$Maybe$Nothing;
+};
+var $aforemny$material_components_web_elm$Material$Button$trailingIconElt = function (config_) {
+	var trailingIcon = config_.a.trailingIcon;
+	return trailingIcon ? $aforemny$material_components_web_elm$Material$Button$iconElt(config_) : $elm$core$Maybe$Nothing;
+};
+var $aforemny$material_components_web_elm$Material$Button$variantCs = function (variant) {
+	switch (variant.$) {
+		case 'Text':
+			return $elm$core$Maybe$Nothing;
+		case 'Raised':
+			return $elm$core$Maybe$Just(
+				$elm$html$Html$Attributes$class('mdc-button--raised'));
+		case 'Unelevated':
+			return $elm$core$Maybe$Just(
+				$elm$html$Html$Attributes$class('mdc-button--unelevated'));
+		default:
+			return $elm$core$Maybe$Just(
+				$elm$html$Html$Attributes$class('mdc-button--outlined'));
+	}
+};
+var $aforemny$material_components_web_elm$Material$Button$button = F3(
+	function (variant, config_, label) {
+		var additionalAttributes = config_.a.additionalAttributes;
+		var href = config_.a.href;
+		return A3(
+			$elm$html$Html$node,
+			'mdc-button',
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$aforemny$material_components_web_elm$Material$Button$disabledProp(config_)
+					])),
+			_List_fromArray(
+				[
+					A2(
+					(!_Utils_eq(href, $elm$core$Maybe$Nothing)) ? $elm$html$Html$a : $elm$html$Html$button,
+					_Utils_ap(
+						A2(
+							$elm$core$List$filterMap,
+							$elm$core$Basics$identity,
+							_List_fromArray(
+								[
+									$aforemny$material_components_web_elm$Material$Button$rootCs,
+									$aforemny$material_components_web_elm$Material$Button$variantCs(variant),
+									$aforemny$material_components_web_elm$Material$Button$denseCs(config_),
+									$aforemny$material_components_web_elm$Material$Button$disabledAttr(config_),
+									$aforemny$material_components_web_elm$Material$Button$tabIndexProp(config_),
+									$aforemny$material_components_web_elm$Material$Button$hrefAttr(config_),
+									$aforemny$material_components_web_elm$Material$Button$targetAttr(config_),
+									$aforemny$material_components_web_elm$Material$Button$clickHandler(config_)
+								])),
+						additionalAttributes),
+					A2(
+						$elm$core$List$filterMap,
+						$elm$core$Basics$identity,
+						_List_fromArray(
+							[
+								$aforemny$material_components_web_elm$Material$Button$leadingIconElt(config_),
+								$aforemny$material_components_web_elm$Material$Button$labelElt(label),
+								$aforemny$material_components_web_elm$Material$Button$trailingIconElt(config_)
+							])))
+				]));
+	});
+var $aforemny$material_components_web_elm$Material$Button$raised = F2(
+	function (config_, label) {
+		return A3($aforemny$material_components_web_elm$Material$Button$button, $aforemny$material_components_web_elm$Material$Button$Raised, config_, label);
+	});
+var $elm$html$Html$select = _VirtualDom_node('select');
+var $aforemny$material_components_web_elm$Material$Button$setOnClick = F2(
+	function (onClick, _v0) {
+		var config_ = _v0.a;
+		return $aforemny$material_components_web_elm$Material$Button$Internal$Config(
+			_Utils_update(
+				config_,
+				{
+					onClick: $elm$core$Maybe$Just(onClick)
+				}));
+	});
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $aforemny$material_components_web_elm$Material$Typography$subtitle1 = $elm$html$Html$Attributes$class('mdc-typography--subtitle1');
+var $aforemny$material_components_web_elm$Material$Typography$subtitle2 = $elm$html$Html$Attributes$class('mdc-typography--subtitle2');
+var $elm$core$String$toFloat = _String_toFloat;
+var $elm$html$Html$canvas = _VirtualDom_node('canvas');
+var $joakin$elm_canvas$Canvas$cnvs = A2($elm$html$Html$canvas, _List_Nil, _List_Nil);
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$commands = function (list) {
 	return A2(
 		$elm$html$Html$Attributes$property,
@@ -6290,7 +6968,6 @@ var $joakin$elm_canvas$Canvas$renderClear = F4(
 			A4($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$clearRect, x, y, w, h),
 			cmds);
 	});
-var $elm$json$Json$Encode$bool = _Json_wrap;
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$arc = F6(
 	function (x, y, radius, startAngle, endAngle, anticlockwise) {
 		return A2(
@@ -6537,7 +7214,6 @@ var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fill = function (fil
 var $elm$core$String$concat = function (strings) {
 	return A2($elm$core$String$join, '', strings);
 };
-var $elm$core$String$fromFloat = _String_fromNumber;
 var $avh4$elm_color$Color$toCssString = function (_v0) {
 	var r = _v0.a;
 	var g = _v0.b;
@@ -6813,22 +7489,12 @@ var $joakin$elm_canvas$Canvas$renderOne = F2(
 var $joakin$elm_canvas$Canvas$render = function (entities) {
 	return A3($elm$core$List$foldl, $joakin$elm_canvas$Canvas$renderOne, $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$empty, entities);
 };
-var $elm$virtual_dom$VirtualDom$attribute = F2(
-	function (key, value) {
-		return A2(
-			_VirtualDom_attribute,
-			_VirtualDom_noOnOrFormAction(key),
-			_VirtualDom_noJavaScriptOrHtmlUri(value));
-	});
-var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
 var $joakin$elm_canvas$Canvas$Internal$Texture$TImage = function (a) {
 	return {$: 'TImage', a: a};
 };
 var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $elm$json$Json$Decode$map3 = _Json_map3;
-var $elm$json$Json$Decode$string = _Json_decodeString;
 var $elm$json$Json$Decode$value = _Json_decodeValue;
 var $joakin$elm_canvas$Canvas$Internal$Texture$decodeTextureImage = A2(
 	$elm$json$Json$Decode$andThen,
@@ -6848,32 +7514,12 @@ var $joakin$elm_canvas$Canvas$Internal$Texture$decodeTextureImage = A2(
 	$elm$json$Json$Decode$value);
 var $joakin$elm_canvas$Canvas$Internal$Texture$decodeImageLoadEvent = A2($elm$json$Json$Decode$field, 'target', $joakin$elm_canvas$Canvas$Internal$Texture$decodeTextureImage);
 var $elm$html$Html$img = _VirtualDom_node('img');
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
 var $elm$html$Html$Attributes$src = function (url) {
 	return A2(
 		$elm$html$Html$Attributes$stringProperty,
 		'src',
 		_VirtualDom_noJavaScriptOrHtmlUri(url));
 };
-var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $joakin$elm_canvas$Canvas$renderTextureSource = function (textureSource) {
 	var url = textureSource.a;
 	var onLoad = textureSource.b;
@@ -6935,49 +7581,273 @@ var $joakin$elm_canvas$Canvas$toHtml = F3(
 			attrs,
 			entities);
 	});
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
+var $aforemny$material_components_web_elm$Material$Typography$typography = $elm$html$Html$Attributes$class('mdc-typography');
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
 var $author$project$Maze$view = function (model) {
-	var res = A3(
-		$joakin$elm_canvas$Canvas$toHtml,
-		_Utils_Tuple2($author$project$Maze$cWidth, $author$project$Maze$cHeight),
-		_List_Nil,
-		A2(
-			$elm$core$List$cons,
-			A3(
-				$joakin$elm_canvas$Canvas$clear,
-				_Utils_Tuple2(0, 0),
-				$author$project$Maze$cWidth,
-				$author$project$Maze$cHeight),
-			A2(
-				$elm$core$List$concatMap,
-				function (j) {
-					return A2(
-						$elm$core$List$map,
-						$elm$core$Basics$apR(j),
+	var res = A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[$aforemny$material_components_web_elm$Material$Typography$typography]),
+		_List_fromArray(
+			[
+				A3(
+				$joakin$elm_canvas$Canvas$toHtml,
+				_Utils_Tuple2(model.canvasSize, model.canvasSize),
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'float', 'left')
+					]),
+				A2(
+					$elm$core$List$cons,
+					A3(
+						$joakin$elm_canvas$Canvas$clear,
+						_Utils_Tuple2(0, 0),
+						model.canvasSize,
+						model.canvasSize),
+					A2(
+						$elm$core$List$concatMap,
+						function (j) {
+							return A2(
+								$elm$core$List$map,
+								$elm$core$Basics$apR(j),
+								A2(
+									$elm$core$List$map,
+									$author$project$Maze$cell(model),
+									A2(
+										$elm$core$List$map,
+										$elm$core$Basics$toFloat,
+										A2($elm$core$List$range, 0, model.width))));
+						},
 						A2(
 							$elm$core$List$map,
-							$author$project$Maze$cell(model.neighborhood),
-							A2(
-								$elm$core$List$map,
-								$elm$core$Basics$toFloat,
-								A2($elm$core$List$range, 0, model.width))));
-				},
+							$elm$core$Basics$toFloat,
+							A2($elm$core$List$range, 0, model.height))))),
 				A2(
-					$elm$core$List$map,
-					$elm$core$Basics$toFloat,
-					A2($elm$core$List$range, 0, model.height)))));
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$aforemny$material_components_web_elm$Material$Typography$typography,
+						A2($elm$html$Html$Attributes$style, 'display', 'block'),
+						A2($elm$html$Html$Attributes$style, 'width', '200px'),
+						A2($elm$html$Html$Attributes$style, 'float', 'left')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$aforemny$material_components_web_elm$Material$Button$raised,
+						A2($aforemny$material_components_web_elm$Material$Button$setOnClick, $author$project$Maze$Animate, $aforemny$material_components_web_elm$Material$Button$config),
+						'Animate'),
+						A2(
+						$elm$html$Html$h4,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle1]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Algorithm')
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Tiling Algorithm')
+							])),
+						A2(
+						$elm$html$Html$select,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'width', '100%')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$option,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$value('BinaryTree')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('BinaryTree')
+									])),
+								A2(
+								$elm$html$Html$option,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$value('Sidewinder')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Sidewinder')
+									]))
+							])),
+						A2(
+						$elm$html$Html$h4,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle1]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Display')
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Animation Delay')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								$elm$html$Html$Attributes$type_('range'),
+								$elm$html$Html$Attributes$min('1'),
+								$elm$html$Html$Attributes$max('300'),
+								$elm$html$Html$Attributes$value(
+								$elm$core$String$fromInt(
+									$elm$core$Basics$round(model.animationDelay))),
+								$elm$html$Html$Events$onInput(
+								function (x) {
+									return $author$project$Maze$AnimationDelay(
+										function () {
+											var _v0 = $elm$core$String$toFloat(x);
+											if (_v0.$ === 'Just') {
+												var f = _v0.a;
+												return f;
+											} else {
+												return model.animationDelay;
+											}
+										}());
+								})
+							]),
+						_List_Nil),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Canvas Size')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								$elm$html$Html$Attributes$type_('range'),
+								$elm$html$Html$Attributes$min('300'),
+								$elm$html$Html$Attributes$max('1000'),
+								$elm$html$Html$Attributes$value(
+								$elm$core$String$fromInt(model.canvasSize)),
+								$elm$html$Html$Events$onInput(
+								function (x) {
+									return $author$project$Maze$CanvasSize(
+										function () {
+											var _v1 = $elm$core$String$toFloat(x);
+											if (_v1.$ === 'Just') {
+												var f = _v1.a;
+												return f;
+											} else {
+												return model.canvasSize;
+											}
+										}());
+								})
+							]),
+						_List_Nil),
+						A2(
+						$elm$html$Html$h4,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle1]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Cells')
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Cell Size')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								$elm$html$Html$Attributes$type_('range'),
+								$elm$html$Html$Attributes$min('10'),
+								$elm$html$Html$Attributes$max('200'),
+								$elm$html$Html$Attributes$value(
+								$elm$core$String$fromFloat(model.cellSize)),
+								$elm$html$Html$Events$onInput(
+								function (x) {
+									return $author$project$Maze$CellSize(
+										function () {
+											var _v2 = $elm$core$String$toFloat(x);
+											if (_v2.$ === 'Just') {
+												var f = _v2.a;
+												return f;
+											} else {
+												return model.cellSize;
+											}
+										}());
+								})
+							]),
+						_List_Nil),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Wall Width')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								$elm$html$Html$Attributes$type_('range'),
+								$elm$html$Html$Attributes$min('1'),
+								$elm$html$Html$Attributes$max('10'),
+								$elm$html$Html$Attributes$value(
+								$elm$core$String$fromFloat(model.wallWidth)),
+								$elm$html$Html$Events$onInput(
+								function (x) {
+									return $author$project$Maze$WallWidth(
+										function () {
+											var _v3 = $elm$core$String$toFloat(x);
+											if (_v3.$ === 'Just') {
+												var f = _v3.a;
+												return f;
+											} else {
+												return model.wallWidth;
+											}
+										}());
+								})
+							]),
+						_List_Nil)
+					]))
+			]));
 	return res;
 };
 var $author$project$Maze$main = $elm$browser$Browser$element(
 	{
 		init: $author$project$Maze$init,
 		subscriptions: function (model) {
-			return $elm$core$Platform$Sub$none;
+			return A2(
+				$elm$time$Time$every,
+				model.animationDelay,
+				$elm$core$Basics$always($author$project$Maze$Tick));
 		},
 		update: F2(
 			function (msg, model) {
-				return _Utils_Tuple2(
-					A2($author$project$Maze$update, msg, model),
-					$elm$core$Platform$Cmd$none);
+				return A2($author$project$Maze$update, msg, model);
 			}),
 		view: $author$project$Maze$view
 	});

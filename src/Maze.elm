@@ -5,24 +5,21 @@ import Canvas.Settings exposing (..)
 import Canvas.Settings.Line exposing (..)
 import Canvas.Settings.Advanced exposing (..)
 import Color
-import Browser
-import Html.Attributes exposing (style)
 import Dict exposing (Dict)
 import Random exposing (Generator)
 import Array
 import Debug exposing (log)
-
-cWidth : number
-cWidth = 600
-
-cHeight : number
-cHeight = 600
-
-cellWidth : number
-cellWidth = 20
-
-strokeWidth : number
-strokeWidth = 1
+import Time
+import Browser
+import Html.Events exposing (onInput)
+import Html.Attributes exposing (style, min, max, type_, value)
+import Html exposing (Html, text)
+import Material.Slider as Slider
+import Material.Typography as Typography
+import Material.Button as Button
+import Material.Select as Select
+import Material.Select.Option as SelectOption
+import Delay exposing (after, TimeUnit(..))
 
 addLink p1 p2 ns = 
     let
@@ -67,10 +64,11 @@ northNeighbor (x, y) =
 westNeighbor (x, y) =
     (x-1, y)
 
-cell : Neighborhood -> Float -> Float -> Renderable
-cell ns i j = 
+cell : Model -> Float -> Float -> Renderable
+cell model i j = 
     let
-        w = cellWidth
+        w = model.cellSize
+        ns = model.neighborhood
         x1 = 4 + i * w
         x2 = x1 + w
         y1 = 4 + j * w
@@ -79,12 +77,12 @@ cell ns i j =
         shapes
             [ stroke <| Color.rgb255 0 0 0
             , transform [translate 0 0]
-            , lineWidth strokeWidth ]
+            , lineWidth model.wallWidth ]
             [ path ( x1, y1 )
                 [ drawLineIfnt (isLinked ns (i,j) (northNeighbor (i,j))) (x2,y1)
                 , drawLineIfnt (isLinked ns (i,j) (eastNeighbor (i,j))) (x2,y2)
                 , drawLineIfnt (isLinked ns (i,j) (southNeighbor (i,j))) (x1,y2)
-                , drawLineIfnt (isLinked ns (i,j) (westNeighbor (i,j))) (x1,y1)
+                , drawLineIfnt (isLinked ns (i,j) (westNeighbor (i,j))) (x1, y1 - model.wallWidth / 2)
                 ]
             ]
 
@@ -94,25 +92,37 @@ northEastNeighbors width p1 =
         ns = []
         ns2 = if i < width then (eastNeighbor p1) :: ns else ns
         ns3 = if j > 0 then (northNeighbor p1) :: ns2 else ns2
-        lg = (log "width" (i, width))
     in 
         ns3
 
 generatorLinkArgs height width p1 =
     let
         ns = Array.fromList (northEastNeighbors width p1)
-        lg = (log "ns" (ns))
     in 
         Random.int 0 ((Array.length ns) - 1)
 
 {- Main program loop -}
 
 type alias Model =
-    { width : Int, height : Int, neighborhood : Neighborhood}
+    { width : Int
+    , height : Int
+    , linkQueue: List (Point, Point)
+    , neighborhood : Neighborhood
+    , canvasSize : Int
+    , cellSize : Float
+    , animationDelay : Float
+    , wallWidth : Float}
 
 type Msg
-    = AddLink Point Point
+    = Reset
+    | AddLink Point Point
     | Tick
+    | CanvasSize Float
+    | CellSize Float
+    | AnimationDelay Float
+    | Animate
+    | Algorithm String
+    | WallWidth Float
     
 type alias Neighborhood =
     Dict (Float, Float) (List (Float, Float))
@@ -120,59 +130,177 @@ type alias Neighborhood =
 
 view model = 
     let 
-        res = Canvas.toHtml ( cWidth, cHeight ) [ ]
-            ((clear ( 0, 0 ) cWidth cHeight) ::
-            (List.range 0 model.height
-            |> List.map toFloat
-            |> List.concatMap (\j -> 
-                (List.map ((|>) j)
-                (List.range 0 model.width
-                    |> List.map toFloat
-                    |> List.map (cell model.neighborhood))))))
+        res = Html.div [ Typography.typography ]
+            [ Html.div 
+                    [ Typography.typography
+                    , style "display" "block"
+                    , style "width" "200px"
+                    , style "float" "left"
+                    , style "margin-right" "20px"]
+                    [ Button.raised (Button.config 
+                            |> Button.setOnClick Animate 
+                            |> Button.setAttributes [ style "width" "200px"]) 
+                        "Animate"
+                    , Html.h4 [ Typography.subtitle1 ] [ Html.text "Algorithm" ]
+                    , Html.div [ Typography.subtitle2 ] [ Html.text "Tiling Algorithm" ]
+                    , Html.select [ style "width" "100%"]
+                        [ Html.option [ value "BinaryTree" ] [ Html.text "Binary Tree"]
+                        , Html.option [ value "Sidewinder" ] [ Html.text "Sidewinder"]
+                        , Html.option [ value "AldousBroder" ] [ Html.text "Aldous Broder"]
+                        , Html.option [ value "Wilsons" ] [ Html.text "Wilson's"]
+                        , Html.option [ value "HuntAndKill" ] [ Html.text "Hunt-and-Kill"]
+                        , Html.option [ value "RecursiveBacktracking" ] [ Html.text "Recursive Backtracking"]
+                        , Html.option [ value "Prims" ] [ Html.text "Prim's"]
+                        ]
+                    , Html.h4 [ Typography.subtitle1 ] [ Html.text "Display" ]
+                    , Html.div [ Typography.subtitle2 ] [ Html.text "Animation Delay" ]
+                    , Html.input 
+                        [ style "width" "100%"
+                        , type_ "range"
+                        , Html.Attributes.min "1"
+                        , Html.Attributes.max "300"
+                        , value (String.fromInt (round model.animationDelay))
+                        , onInput (\x -> AnimationDelay (
+                            case (String.toFloat x) of
+                                Just f -> f
+                                Nothing -> model.animationDelay)   
+                        )] 
+                        []
+                    , Html.div [ Typography.subtitle2 ] [ Html.text "Canvas Size" ]
+                    , Html.input 
+                        [ style "width" "100%"
+                        , type_ "range"
+                        , Html.Attributes.min "300"
+                        , Html.Attributes.max "1000"
+                        , value (String.fromInt model.canvasSize)
+                        , onInput (\x -> CanvasSize (
+                            case (String.toFloat x) of
+                                Just f -> f
+                                Nothing -> toFloat model.canvasSize)   
+                        )] 
+                        []
+                    , Html.h4 [ Typography.subtitle1 ] [ Html.text "Cells" ]
+                    , Html.div [ Typography.subtitle2 ] [ Html.text "Cell Size" ]
+                    , Html.input 
+                        [ style "width" "100%"
+                        , type_ "range"
+                        , Html.Attributes.min "10"
+                        , Html.Attributes.max "200"
+                        , value (String.fromFloat model.cellSize)
+                        , onInput (\x -> CellSize (
+                            case (String.toFloat x) of
+                                Just f -> f
+                                Nothing -> model.cellSize)   
+                        )] 
+                        []
+                    , Html.div [ Typography.subtitle2 ] [ Html.text "Wall Width" ]
+                    , Html.input 
+                        [ style "width" "100%"
+                        , type_ "range"
+                        , Html.Attributes.min "1"
+                        , Html.Attributes.max "10"
+                        , value (String.fromFloat model.wallWidth)
+                        , onInput (\x -> WallWidth (
+                            case (String.toFloat x) of
+                                Just f -> f
+                                Nothing -> model.wallWidth)   
+                        )] 
+                        []
+                ]
+                , Canvas.toHtml ( model.canvasSize, model.canvasSize ) [ style "float" "left" ]
+                ((clear ( 0, 0 ) (toFloat model.canvasSize) (toFloat model.canvasSize)) ::
+                (List.range 0 model.height
+                |> List.map toFloat
+                |> List.concatMap (\j -> 
+                    (List.map ((|>) j)
+                    (List.range 0 model.width
+                        |> List.map toFloat
+                        |> List.map (cell model))))))
+            ]
     in res
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        Reset ->
+            let 
+                width = toFloat ((model.canvasSize - 10) // (round model.cellSize) - 1)
+                height = toFloat ((model.canvasSize - 10) // (round model.cellSize) - 1)
+                cells = List.range 0 (round height)
+                    |> List.map toFloat
+                    |> List.concatMap 
+                        (\j -> (List.map ((|>) j) 
+                            (List.range 0 (round width)
+                            |> List.map toFloat
+                            |> List.map (\i k -> (i, k)))))
+                batch = List.map 
+                    (\(i, j) -> 
+                        let
+                            p1 = (i, j)
+                        in 
+                        Random.generate (\k -> (AddLink p1 
+                            (case Array.get k (Array.fromList (northEastNeighbors width p1)) of
+                                Just p2 -> p2
+                                Nothing -> (-2,-2)
+                            )
+                            )) 
+                            (generatorLinkArgs height width p1)
+                            
+                    ) cells
+            in ({ model 
+                    | linkQueue = []
+                    , neighborhood = Dict.empty
+                    , width = (round width)
+                    , height = (round height)
+                },
+                Cmd.batch batch)
         AddLink p1 p2 ->
-            { model | neighborhood = addLink p1 p2 model.neighborhood }
+            ({ model 
+                | linkQueue = (p1, p2) :: model.linkQueue }
+            , Cmd.none)
         Tick ->
-            model
+            (case model.linkQueue of
+              [] -> model
+              (p1,p2) :: rest -> { model | linkQueue = rest, neighborhood = addLink p1 p2 model.neighborhood }
+            , Cmd.none)
+        AnimationDelay f ->
+            ({ model | animationDelay = f}
+            , after 0 Millisecond Reset)
+        WallWidth f ->
+            ({ model | wallWidth = f}
+            , after 0 Millisecond Reset)
+        CellSize f ->
+            ({ model | cellSize = f}
+            , after 0 Millisecond Reset)
+        CanvasSize f ->
+            ({ model | canvasSize = (round f)
+            , width = ((model.canvasSize - 10) // (round model.cellSize) - 1)
+            , height = ((model.canvasSize - 10) // (round model.cellSize) - 1)}
+            , after 0 Millisecond Reset)
+        Animate ->
+            (model
+            , after 0 Millisecond Reset)
+        Algorithm s ->
+            (model
+            , after 0 Millisecond Reset)
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    let
-        width = toFloat ((cWidth - 10) // cellWidth - 1)
-        height = toFloat ((cHeight - 10) // cellWidth - 1)
-        cells = List.range 0 (round height)
-            |> List.map toFloat
-            |> List.concatMap 
-                (\j -> (List.map ((|>) j) 
-                    (List.range 0 (round width)
-                    |> List.map toFloat
-                    |> List.map (\i k -> (i, k)))))
-        batch = List.map 
-            (\(i, j) -> 
-                let
-                    p1 = (i, j)
-                in 
-                Random.generate (\k -> (AddLink p1 
-                    (case Array.get k (Array.fromList (northEastNeighbors width p1)) of
-                        Just p2 -> p2
-                        Nothing -> (-2,-2)
-                    )
-                    )) 
-                    (generatorLinkArgs height width p1)
-                    
-            ) cells
-    in
-    ({ width = (round width), height = (round height), neighborhood = Dict.empty }, Cmd.batch batch)
+    ({ linkQueue = []
+    , width = 0
+    , height = 0
+    , neighborhood = Dict.empty 
+    , cellSize = 20
+    , canvasSize = 700
+    , animationDelay = 20
+    , wallWidth = 1}
+    , after 0 Millisecond Reset)
 
 main : Program () Model Msg
 main =
     Browser.element
         { init = init
         , view = view
-        , update = \msg model -> ( update msg model, Cmd.none )
-        , subscriptions = \model -> Sub.none
+        , update = \msg model -> update msg model
+        , subscriptions = \model -> Time.every model.animationDelay (always Tick)
         }
