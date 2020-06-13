@@ -80,271 +80,6 @@ function A9(fun, a, b, c, d, e, f, g, h, i) {
 console.warn('Compiled in DEV mode. Follow the advice at https://elm-lang.org/0.19.1/optimize for better performance and smaller assets.');
 
 
-// EQUALITY
-
-function _Utils_eq(x, y)
-{
-	for (
-		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
-		isEqual && (pair = stack.pop());
-		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
-		)
-	{}
-
-	return isEqual;
-}
-
-function _Utils_eqHelp(x, y, depth, stack)
-{
-	if (x === y)
-	{
-		return true;
-	}
-
-	if (typeof x !== 'object' || x === null || y === null)
-	{
-		typeof x === 'function' && _Debug_crash(5);
-		return false;
-	}
-
-	if (depth > 100)
-	{
-		stack.push(_Utils_Tuple2(x,y));
-		return true;
-	}
-
-	/**/
-	if (x.$ === 'Set_elm_builtin')
-	{
-		x = $elm$core$Set$toList(x);
-		y = $elm$core$Set$toList(y);
-	}
-	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	/**_UNUSED/
-	if (x.$ < 0)
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	for (var key in x)
-	{
-		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-var _Utils_equal = F2(_Utils_eq);
-var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
-
-
-
-// COMPARISONS
-
-// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
-// the particular integer values assigned to LT, EQ, and GT.
-
-function _Utils_cmp(x, y, ord)
-{
-	if (typeof x !== 'object')
-	{
-		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
-	}
-
-	/**/
-	if (x instanceof String)
-	{
-		var a = x.valueOf();
-		var b = y.valueOf();
-		return a === b ? 0 : a < b ? -1 : 1;
-	}
-	//*/
-
-	/**_UNUSED/
-	if (typeof x.$ === 'undefined')
-	//*/
-	/**/
-	if (x.$[0] === '#')
-	//*/
-	{
-		return (ord = _Utils_cmp(x.a, y.a))
-			? ord
-			: (ord = _Utils_cmp(x.b, y.b))
-				? ord
-				: _Utils_cmp(x.c, y.c);
-	}
-
-	// traverse conses until end of a list or a mismatch
-	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
-	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
-}
-
-var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
-var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
-var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
-var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
-
-var _Utils_compare = F2(function(x, y)
-{
-	var n = _Utils_cmp(x, y);
-	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
-});
-
-
-// COMMON VALUES
-
-var _Utils_Tuple0_UNUSED = 0;
-var _Utils_Tuple0 = { $: '#0' };
-
-function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
-function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
-
-function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
-function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
-
-function _Utils_chr_UNUSED(c) { return c; }
-function _Utils_chr(c) { return new String(c); }
-
-
-// RECORDS
-
-function _Utils_update(oldRecord, updatedFields)
-{
-	var newRecord = {};
-
-	for (var key in oldRecord)
-	{
-		newRecord[key] = oldRecord[key];
-	}
-
-	for (var key in updatedFields)
-	{
-		newRecord[key] = updatedFields[key];
-	}
-
-	return newRecord;
-}
-
-
-// APPEND
-
-var _Utils_append = F2(_Utils_ap);
-
-function _Utils_ap(xs, ys)
-{
-	// append Strings
-	if (typeof xs === 'string')
-	{
-		return xs + ys;
-	}
-
-	// append Lists
-	if (!xs.b)
-	{
-		return ys;
-	}
-	var root = _List_Cons(xs.a, ys);
-	xs = xs.b
-	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		curr = curr.b = _List_Cons(xs.a, ys);
-	}
-	return root;
-}
-
-
-
-var _List_Nil_UNUSED = { $: 0 };
-var _List_Nil = { $: '[]' };
-
-function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
-function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
-
-
-var _List_cons = F2(_List_Cons);
-
-function _List_fromArray(arr)
-{
-	var out = _List_Nil;
-	for (var i = arr.length; i--; )
-	{
-		out = _List_Cons(arr[i], out);
-	}
-	return out;
-}
-
-function _List_toArray(xs)
-{
-	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		out.push(xs.a);
-	}
-	return out;
-}
-
-var _List_map2 = F3(function(f, xs, ys)
-{
-	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
-	{
-		arr.push(A2(f, xs.a, ys.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map3 = F4(function(f, xs, ys, zs)
-{
-	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A3(f, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map4 = F5(function(f, ws, xs, ys, zs)
-{
-	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
-{
-	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_sortBy = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		return _Utils_cmp(f(a), f(b));
-	}));
-});
-
-var _List_sortWith = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		var ord = A2(f, a, b);
-		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
-	}));
-});
-
-
-
 var _JsArray_empty = [];
 
 function _JsArray_singleton(value)
@@ -790,6 +525,271 @@ function _Debug_regionToString(region)
 	}
 	return 'on lines ' + region.start.line + ' through ' + region.end.line;
 }
+
+
+
+// EQUALITY
+
+function _Utils_eq(x, y)
+{
+	for (
+		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
+		isEqual && (pair = stack.pop());
+		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
+		)
+	{}
+
+	return isEqual;
+}
+
+function _Utils_eqHelp(x, y, depth, stack)
+{
+	if (x === y)
+	{
+		return true;
+	}
+
+	if (typeof x !== 'object' || x === null || y === null)
+	{
+		typeof x === 'function' && _Debug_crash(5);
+		return false;
+	}
+
+	if (depth > 100)
+	{
+		stack.push(_Utils_Tuple2(x,y));
+		return true;
+	}
+
+	/**/
+	if (x.$ === 'Set_elm_builtin')
+	{
+		x = $elm$core$Set$toList(x);
+		y = $elm$core$Set$toList(y);
+	}
+	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	/**_UNUSED/
+	if (x.$ < 0)
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	for (var key in x)
+	{
+		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+var _Utils_equal = F2(_Utils_eq);
+var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
+
+
+
+// COMPARISONS
+
+// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
+// the particular integer values assigned to LT, EQ, and GT.
+
+function _Utils_cmp(x, y, ord)
+{
+	if (typeof x !== 'object')
+	{
+		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
+	}
+
+	/**/
+	if (x instanceof String)
+	{
+		var a = x.valueOf();
+		var b = y.valueOf();
+		return a === b ? 0 : a < b ? -1 : 1;
+	}
+	//*/
+
+	/**_UNUSED/
+	if (typeof x.$ === 'undefined')
+	//*/
+	/**/
+	if (x.$[0] === '#')
+	//*/
+	{
+		return (ord = _Utils_cmp(x.a, y.a))
+			? ord
+			: (ord = _Utils_cmp(x.b, y.b))
+				? ord
+				: _Utils_cmp(x.c, y.c);
+	}
+
+	// traverse conses until end of a list or a mismatch
+	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
+	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
+}
+
+var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
+var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
+var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
+var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
+
+var _Utils_compare = F2(function(x, y)
+{
+	var n = _Utils_cmp(x, y);
+	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
+});
+
+
+// COMMON VALUES
+
+var _Utils_Tuple0_UNUSED = 0;
+var _Utils_Tuple0 = { $: '#0' };
+
+function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
+function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
+
+function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
+function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
+
+function _Utils_chr_UNUSED(c) { return c; }
+function _Utils_chr(c) { return new String(c); }
+
+
+// RECORDS
+
+function _Utils_update(oldRecord, updatedFields)
+{
+	var newRecord = {};
+
+	for (var key in oldRecord)
+	{
+		newRecord[key] = oldRecord[key];
+	}
+
+	for (var key in updatedFields)
+	{
+		newRecord[key] = updatedFields[key];
+	}
+
+	return newRecord;
+}
+
+
+// APPEND
+
+var _Utils_append = F2(_Utils_ap);
+
+function _Utils_ap(xs, ys)
+{
+	// append Strings
+	if (typeof xs === 'string')
+	{
+		return xs + ys;
+	}
+
+	// append Lists
+	if (!xs.b)
+	{
+		return ys;
+	}
+	var root = _List_Cons(xs.a, ys);
+	xs = xs.b
+	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		curr = curr.b = _List_Cons(xs.a, ys);
+	}
+	return root;
+}
+
+
+
+var _List_Nil_UNUSED = { $: 0 };
+var _List_Nil = { $: '[]' };
+
+function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
+function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
+
+
+var _List_cons = F2(_List_Cons);
+
+function _List_fromArray(arr)
+{
+	var out = _List_Nil;
+	for (var i = arr.length; i--; )
+	{
+		out = _List_Cons(arr[i], out);
+	}
+	return out;
+}
+
+function _List_toArray(xs)
+{
+	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		out.push(xs.a);
+	}
+	return out;
+}
+
+var _List_map2 = F3(function(f, xs, ys)
+{
+	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
+	{
+		arr.push(A2(f, xs.a, ys.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map3 = F4(function(f, xs, ys, zs)
+{
+	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A3(f, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map4 = F5(function(f, ws, xs, ys, zs)
+{
+	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
+{
+	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_sortBy = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		return _Utils_cmp(f(a), f(b));
+	}));
+});
+
+var _List_sortWith = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		var ord = A2(f, a, b);
+		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
+	}));
+});
 
 
 
@@ -4443,10 +4443,31 @@ var $elm$core$Basics$always = F2(
 	function (a, _v0) {
 		return a;
 	});
-var $elm$core$Basics$EQ = {$: 'EQ'};
-var $elm$core$Basics$GT = {$: 'GT'};
-var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
+var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
+var $elm$core$Array$foldr = F3(
+	function (func, baseCase, _v0) {
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
+				} else {
+					var values = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
+				}
+			});
+		return A3(
+			$elm$core$Elm$JsArray$foldr,
+			helper,
+			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
+			tree);
+	});
+var $elm$core$Array$toList = function (array) {
+	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
+};
 var $elm$core$Dict$foldr = F3(
 	function (func, acc, t) {
 		foldr:
@@ -4499,30 +4520,9 @@ var $elm$core$Set$toList = function (_v0) {
 	var dict = _v0.a;
 	return $elm$core$Dict$keys(dict);
 };
-var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
-var $elm$core$Array$foldr = F3(
-	function (func, baseCase, _v0) {
-		var tree = _v0.c;
-		var tail = _v0.d;
-		var helper = F2(
-			function (node, acc) {
-				if (node.$ === 'SubTree') {
-					var subTree = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
-				} else {
-					var values = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
-				}
-			});
-		return A3(
-			$elm$core$Elm$JsArray$foldr,
-			helper,
-			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
-			tree);
-	});
-var $elm$core$Array$toList = function (array) {
-	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
-};
+var $elm$core$Basics$EQ = {$: 'EQ'};
+var $elm$core$Basics$GT = {$: 'GT'};
+var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -4918,6 +4918,7 @@ var $elm$core$Result$isOk = function (result) {
 		return false;
 	}
 };
+var $elm$json$Json$Decode$andThen = _Json_andThen;
 var $elm$json$Json$Decode$map = _Json_map1;
 var $elm$json$Json$Decode$map2 = _Json_map2;
 var $elm$json$Json$Decode$succeed = _Json_succeed;
@@ -5647,6 +5648,8 @@ var $elm$time$Time$every = F2(
 		return $elm$time$Time$subscription(
 			A2($elm$time$Time$Every, interval, tagger));
 	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $andrewMacmurray$elm_delay$Delay$Millisecond = {$: 'Millisecond'};
 var $author$project$Maze$Reset = {$: 'Reset'};
 var $andrewMacmurray$elm_delay$Delay$Duration = F2(
@@ -5705,39 +5708,67 @@ var $elm$core$Dict$fromList = function (assocs) {
 		$elm$core$Dict$empty,
 		assocs);
 };
+var $elm$random$Random$Seed = F2(
+	function (a, b) {
+		return {$: 'Seed', a: a, b: b};
+	});
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
+};
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
 var $avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
 		return {$: 'RgbaSpace', a: a, b: b, c: c, d: d};
 	});
 var $avh4$elm_color$Color$red = A4($avh4$elm_color$Color$RgbaSpace, 204 / 255, 0 / 255, 0 / 255, 1.0);
+var $elm$core$Basics$round = _Basics_round;
 var $author$project$Maze$init = function (_v0) {
+	var startTime = _v0.startTime;
+	var model = {
+		algorithm: 'Wilsons',
+		animating: true,
+		animationDelay: 1,
+		canvasSize: 500,
+		cellSize: 50,
+		color: $avh4$elm_color$Color$red,
+		colorPicker: $simonh1000$elm_colorpicker$ColorPicker$empty,
+		distances: $elm$core$Dict$fromList(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					_Utils_Tuple2(0, 0),
+					0)
+				])),
+		height: 0,
+		linkQueue: _List_Nil,
+		maxDist: 0,
+		neighborQueue: $elm$core$Dict$empty,
+		neighborhood: $elm$core$Dict$empty,
+		path: _List_Nil,
+		seed: $elm$random$Random$initialSeed(
+			$elm$core$Basics$round(startTime)),
+		unvisited: 0,
+		wallWidth: 1,
+		width: 0
+	};
 	return _Utils_Tuple2(
-		{
-			animating: true,
-			animationDelay: 1,
-			canvasSize: 700,
-			cellSize: 20,
-			color: $avh4$elm_color$Color$red,
-			colorPicker: $simonh1000$elm_colorpicker$ColorPicker$empty,
-			distances: $elm$core$Dict$fromList(
-				_List_fromArray(
-					[
-						_Utils_Tuple2(
-						_Utils_Tuple2(0, 0),
-						0)
-					])),
-			height: 0,
-			linkQueue: _List_Nil,
-			maxDist: 0,
-			neighborhood: $elm$core$Dict$empty,
-			wallWidth: 1,
-			width: 0
-		},
+		model,
 		A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
 };
-var $author$project$Maze$AddLink = F2(
+var $author$project$Maze$ABAddLink = F2(
 	function (a, b) {
-		return {$: 'AddLink', a: a, b: b};
+		return {$: 'ABAddLink', a: a, b: b};
 	});
 var $author$project$Maze$addLink = F3(
 	function (p1, p2, ns) {
@@ -5766,115 +5797,6 @@ var $author$project$Maze$addLink = F3(
 			p2,
 			nsP2N,
 			A3($elm$core$Dict$insert, p1, nsP1N, ns));
-	});
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
-		}
-	});
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
-};
-var $elm$core$List$concatMap = F2(
-	function (f, list) {
-		return $elm$core$List$concat(
-			A2($elm$core$List$map, f, list));
-	});
-var $author$project$Maze$addDistance = F2(
-	function (_v0, dist) {
-		var p = _v0.a;
-		var d = _v0.b;
-		return A3($elm$core$Dict$insert, p, d + 1, dist);
-	});
-var $elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _v0 = f(mx);
-		if (_v0.$ === 'Just') {
-			var x = _v0.a;
-			return A2($elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var $elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			$elm$core$List$foldr,
-			$elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
-	});
-var $author$project$Maze$links = F2(
-	function (ns, p1) {
-		var _v0 = A2($elm$core$Dict$get, p1, ns);
-		if (_v0.$ === 'Just') {
-			var a = _v0.a;
-			return a;
-		} else {
-			return _List_Nil;
-		}
-	});
-var $elm$core$Dict$member = F2(
-	function (key, dict) {
-		var _v0 = A2($elm$core$Dict$get, key, dict);
-		if (_v0.$ === 'Just') {
-			return true;
-		} else {
-			return false;
-		}
-	});
-var $author$project$Maze$distances = F2(
-	function (model, frontier) {
-		distances:
-		while (true) {
-			var dist = function (p) {
-				var _v1 = A2($elm$core$Dict$get, p, model.distances);
-				if (_v1.$ === 'Just') {
-					var d = _v1.a;
-					return d;
-				} else {
-					return 0;
-				}
-			};
-			var newFrontDist = A2(
-				$elm$core$List$concatMap,
-				function (p) {
-					return A2(
-						$elm$core$List$filterMap,
-						function (l) {
-							return A2($elm$core$Dict$member, l, model.distances) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
-								_Utils_Tuple2(
-									l,
-									dist(p)));
-						},
-						A2($author$project$Maze$links, model.neighborhood, p));
-				},
-				frontier);
-			var newDist = A3($elm$core$List$foldl, $author$project$Maze$addDistance, model.distances, newFrontDist);
-			var newFront = A2(
-				$elm$core$List$map,
-				function (_v0) {
-					var p = _v0.a;
-					var d = _v0.b;
-					return p;
-				},
-				newFrontDist);
-			if ($elm$core$List$length(frontier) > 0) {
-				var $temp$model = _Utils_update(
-					model,
-					{distances: newDist}),
-					$temp$frontier = newFront;
-				model = $temp$model;
-				frontier = $temp$frontier;
-				continue distances;
-			} else {
-				return model;
-			}
-		}
 	});
 var $elm$core$Array$fromListHelp = F3(
 	function (list, nodeList, nodeListSize) {
@@ -5913,25 +5835,6 @@ var $elm$core$Array$fromList = function (list) {
 };
 var $elm$random$Random$Generate = function (a) {
 	return {$: 'Generate', a: a};
-};
-var $elm$random$Random$Seed = F2(
-	function (a, b) {
-		return {$: 'Seed', a: a, b: b};
-	});
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$random$Random$next = function (_v0) {
-	var state0 = _v0.a;
-	var incr = _v0.b;
-	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
-};
-var $elm$random$Random$initialSeed = function (x) {
-	var _v0 = $elm$random$Random$next(
-		A2($elm$random$Random$Seed, 0, 1013904223));
-	var state1 = _v0.a;
-	var incr = _v0.b;
-	var state2 = (state1 + x) >>> 0;
-	return $elm$random$Random$next(
-		A2($elm$random$Random$Seed, state2, incr));
 };
 var $elm$time$Time$posixToMillis = function (_v0) {
 	var millis = _v0.a;
@@ -6058,26 +5961,48 @@ var $author$project$Maze$northNeighbor = function (_v0) {
 	var y = _v0.b;
 	return _Utils_Tuple2(x, y - 1);
 };
-var $author$project$Maze$northEastNeighbors = F2(
-	function (width, p1) {
+var $author$project$Maze$southNeighbor = function (_v0) {
+	var x = _v0.a;
+	var y = _v0.b;
+	return _Utils_Tuple2(x, y + 1);
+};
+var $author$project$Maze$westNeighbor = function (_v0) {
+	var x = _v0.a;
+	var y = _v0.b;
+	return _Utils_Tuple2(x - 1, y);
+};
+var $author$project$Maze$neighbors = F2(
+	function (model, p) {
+		var width = model.width;
 		var ns = _List_Nil;
-		var _v0 = p1;
+		var height = model.height;
+		var _v0 = p;
 		var i = _v0.a;
 		var j = _v0.b;
 		var ns2 = (_Utils_cmp(i, width) < 0) ? A2(
 			$elm$core$List$cons,
-			$author$project$Maze$eastNeighbor(p1),
+			$author$project$Maze$eastNeighbor(p),
 			ns) : ns;
 		var ns3 = (j > 0) ? A2(
 			$elm$core$List$cons,
-			$author$project$Maze$northNeighbor(p1),
+			$author$project$Maze$northNeighbor(p),
 			ns2) : ns2;
-		return ns3;
+		var ns4 = (_Utils_cmp(j, height) < 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$southNeighbor(p),
+			ns3) : ns3;
+		var ns5 = (i > 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$westNeighbor(p),
+			ns4) : ns4;
+		return ns5;
 	});
-var $author$project$Maze$generatorLinkArgs = F3(
-	function (height, width, p1) {
+var $author$project$Maze$generatorABLinkArgs = F2(
+	function (model, p) {
+		var width = (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1;
 		var ns = $elm$core$Array$fromList(
-			A2($author$project$Maze$northEastNeighbors, width, p1));
+			A2($author$project$Maze$neighbors, model, p));
+		var height = (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1;
 		return A2(
 			$elm$random$Random$int,
 			0,
@@ -6123,9 +6048,518 @@ var $elm$core$Array$get = F2(
 			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
 			A3($elm$core$Array$getHelp, startShift, index, tree)));
 	});
-var $elm$core$Debug$log = _Debug_log;
+var $elm$random$Random$map2 = F3(
+	function (func, _v0, _v1) {
+		var genA = _v0.a;
+		var genB = _v1.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v2 = genA(seed0);
+				var a = _v2.a;
+				var seed1 = _v2.b;
+				var _v3 = genB(seed1);
+				var b = _v3.a;
+				var seed2 = _v3.b;
+				return _Utils_Tuple2(
+					A2(func, a, b),
+					seed2);
+			});
+	});
+var $elm$random$Random$pair = F2(
+	function (genA, genB) {
+		return A3(
+			$elm$random$Random$map2,
+			F2(
+				function (a, b) {
+					return _Utils_Tuple2(a, b);
+				}),
+			genA,
+			genB);
+	});
+var $author$project$Maze$aldousBroder = function (model) {
+	var width = model.width;
+	var seed = model.seed;
+	var height = model.height;
+	var point = A2(
+		$elm$random$Random$pair,
+		A2($elm$random$Random$int, 0, width),
+		A2($elm$random$Random$int, 0, height));
+	var _v0 = A2($elm$random$Random$step, point, seed);
+	var _v1 = _v0.a;
+	var i = _v1.a;
+	var j = _v1.b;
+	var seedN = _v0.b;
+	var p1 = _Utils_Tuple2(i, j);
+	var modelN = _Utils_update(
+		model,
+		{seed: seedN});
+	var batch = A2(
+		$elm$random$Random$generate,
+		function (k) {
+			return A2(
+				$author$project$Maze$ABAddLink,
+				p1,
+				function () {
+					var _v2 = A2(
+						$elm$core$Array$get,
+						k,
+						$elm$core$Array$fromList(
+							A2($author$project$Maze$neighbors, modelN, p1)));
+					if (_v2.$ === 'Just') {
+						var p2 = _v2.a;
+						return p2;
+					} else {
+						return _Utils_Tuple2(-2, -2);
+					}
+				}());
+		},
+		A2($author$project$Maze$generatorABLinkArgs, modelN, p1));
+	return _Utils_Tuple2(
+		modelN,
+		_List_fromArray(
+			[batch]));
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $author$project$Maze$AddLink = F2(
+	function (a, b) {
+		return {$: 'AddLink', a: a, b: b};
+	});
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$core$List$concatMap = F2(
+	function (f, list) {
+		return $elm$core$List$concat(
+			A2($elm$core$List$map, f, list));
+	});
+var $author$project$Maze$northEastNeighbors = F2(
+	function (model, p) {
+		var width = (((model.canvasSize - 10) / $elm$core$Basics$round(model.cellSize)) | 0) - 1;
+		var ns = _List_Nil;
+		var _v0 = p;
+		var i = _v0.a;
+		var j = _v0.b;
+		var ns2 = (_Utils_cmp(i, width) < 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$eastNeighbor(p),
+			ns) : ns;
+		var ns3 = (j > 0) ? A2(
+			$elm$core$List$cons,
+			$author$project$Maze$northNeighbor(p),
+			ns2) : ns2;
+		return ns3;
+	});
+var $author$project$Maze$generatorLinkArgs = F2(
+	function (model, p) {
+		var ns = $elm$core$Array$fromList(
+			A2($author$project$Maze$northEastNeighbors, model, p));
+		return A2(
+			$elm$random$Random$int,
+			0,
+			$elm$core$Array$length(ns) - 1);
+	});
+var $author$project$Maze$binaryTree = function (model) {
+	var width = model.width;
+	var height = model.height;
+	var cells = A2(
+		$elm$core$List$concatMap,
+		function (j) {
+			return A2(
+				$elm$core$List$map,
+				$elm$core$Basics$apR(j),
+				A2(
+					$elm$core$List$map,
+					F2(
+						function (i, k) {
+							return _Utils_Tuple2(i, k);
+						}),
+					A2(
+						$elm$core$List$map,
+						$elm$core$Basics$toFloat,
+						A2($elm$core$List$range, 0, width))));
+		},
+		A2(
+			$elm$core$List$map,
+			$elm$core$Basics$toFloat,
+			A2($elm$core$List$range, 0, height)));
+	var batch = A2(
+		$elm$core$List$map,
+		function (_v0) {
+			var i = _v0.a;
+			var j = _v0.b;
+			var p1 = _Utils_Tuple2(i, j);
+			return A2(
+				$elm$random$Random$generate,
+				function (k) {
+					return A2(
+						$author$project$Maze$AddLink,
+						p1,
+						function () {
+							var _v1 = A2(
+								$elm$core$Array$get,
+								k,
+								$elm$core$Array$fromList(
+									A2($author$project$Maze$northEastNeighbors, model, p1)));
+							if (_v1.$ === 'Just') {
+								var p2 = _v1.a;
+								return p2;
+							} else {
+								return _Utils_Tuple2(-2, -2);
+							}
+						}());
+				},
+				A2($author$project$Maze$generatorLinkArgs, model, p1));
+		},
+		cells);
+	return _Utils_Tuple2(model, batch);
+};
+var $author$project$Maze$addDistance = F2(
+	function (_v0, dist) {
+		var p = _v0.a;
+		var d = _v0.b;
+		return A3($elm$core$Dict$insert, p, d + 1, dist);
+	});
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $author$project$Maze$links = F2(
+	function (ns, p1) {
+		var _v0 = A2($elm$core$Dict$get, p1, ns);
+		if (_v0.$ === 'Just') {
+			var a = _v0.a;
+			return a;
+		} else {
+			return _List_Nil;
+		}
+	});
+var $elm$core$Dict$member = F2(
+	function (key, dict) {
+		var _v0 = A2($elm$core$Dict$get, key, dict);
+		if (_v0.$ === 'Just') {
+			return true;
+		} else {
+			return false;
+		}
+	});
+var $author$project$Maze$distances = F2(
+	function (model, frontier) {
+		distances:
+		while (true) {
+			var dist = function (p) {
+				var _v1 = A2($elm$core$Dict$get, p, model.distances);
+				if (_v1.$ === 'Just') {
+					var d = _v1.a;
+					return d;
+				} else {
+					return 0;
+				}
+			};
+			var newFrontDist = A2(
+				$elm$core$List$concatMap,
+				function (p) {
+					return A2(
+						$elm$core$List$filterMap,
+						function (l) {
+							return A2($elm$core$Dict$member, l, model.distances) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+								_Utils_Tuple2(
+									l,
+									dist(p)));
+						},
+						A2($author$project$Maze$links, model.neighborhood, p));
+				},
+				frontier);
+			var newDist = A3($elm$core$List$foldl, $author$project$Maze$addDistance, model.distances, newFrontDist);
+			var newFront = A2(
+				$elm$core$List$map,
+				function (_v0) {
+					var p = _v0.a;
+					var d = _v0.b;
+					return p;
+				},
+				newFrontDist);
+			if ($elm$core$List$length(frontier) > 0) {
+				var $temp$model = _Utils_update(
+					model,
+					{distances: newDist}),
+					$temp$frontier = newFront;
+				model = $temp$model;
+				frontier = $temp$frontier;
+				continue distances;
+			} else {
+				return model;
+			}
+		}
+	});
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$Basics$round = _Basics_round;
+var $author$project$Maze$shortestPath = F2(
+	function (model, end) {
+		var linked = A2($author$project$Maze$links, model.neighborhood, end);
+		var ds = A2(
+			$elm$core$List$map,
+			function (p) {
+				var _v3 = A2($elm$core$Dict$get, p, model.distances);
+				if (_v3.$ === 'Just') {
+					var d = _v3.a;
+					return _Utils_Tuple2(d, p);
+				} else {
+					return _Utils_Tuple2(1 / 0, p);
+				}
+			},
+			linked);
+		var _v0 = A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v1, _v2) {
+					var d1 = _v1.a;
+					var p1 = _v1.b;
+					var d2 = _v2.a;
+					var p2 = _v2.b;
+					return ((_Utils_cmp(d1, d2) < 0) || _Utils_eq(
+						p1,
+						_Utils_Tuple2(0, 0))) ? _Utils_Tuple2(d1, p1) : _Utils_Tuple2(d2, p2);
+				}),
+			_Utils_Tuple2(
+				1 / 0,
+				_Utils_Tuple2(0, 0)),
+			ds);
+		var dist = _v0.a;
+		var next = _v0.b;
+		var path = _Utils_eq(
+			end,
+			_Utils_Tuple2(0, 0)) ? _List_fromArray(
+			[
+				_Utils_Tuple2(0, 0)
+			]) : A2(
+			$elm$core$List$cons,
+			end,
+			A2($author$project$Maze$shortestPath, model, next));
+		return path;
+	});
+var $author$project$Maze$atEasternBoundary = F2(
+	function (model, _v0) {
+		var x = _v0.a;
+		var y = _v0.b;
+		var width = model.width;
+		var _v1 = $author$project$Maze$eastNeighbor(
+			_Utils_Tuple2(x, y));
+		var i = _v1.a;
+		var j = _v1.b;
+		return _Utils_cmp(i, width) > 0;
+	});
+var $author$project$Maze$atNorthernBoundary = F2(
+	function (model, _v0) {
+		var x = _v0.a;
+		var y = _v0.b;
+		var _v1 = $author$project$Maze$northNeighbor(
+			_Utils_Tuple2(x, y));
+		var i = _v1.a;
+		var j = _v1.b;
+		return j < 0;
+	});
+var $elm$core$Basics$not = _Basics_not;
+var $elm$core$Elm$JsArray$push = _JsArray_push;
+var $elm$core$Elm$JsArray$singleton = _JsArray_singleton;
+var $elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
+var $elm$core$Array$insertTailInTree = F4(
+	function (shift, index, tail, tree) {
+		var pos = $elm$core$Array$bitMask & (index >>> shift);
+		if (_Utils_cmp(
+			pos,
+			$elm$core$Elm$JsArray$length(tree)) > -1) {
+			if (shift === 5) {
+				return A2(
+					$elm$core$Elm$JsArray$push,
+					$elm$core$Array$Leaf(tail),
+					tree);
+			} else {
+				var newSub = $elm$core$Array$SubTree(
+					A4($elm$core$Array$insertTailInTree, shift - $elm$core$Array$shiftStep, index, tail, $elm$core$Elm$JsArray$empty));
+				return A2($elm$core$Elm$JsArray$push, newSub, tree);
+			}
+		} else {
+			var value = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (value.$ === 'SubTree') {
+				var subTree = value.a;
+				var newSub = $elm$core$Array$SubTree(
+					A4($elm$core$Array$insertTailInTree, shift - $elm$core$Array$shiftStep, index, tail, subTree));
+				return A3($elm$core$Elm$JsArray$unsafeSet, pos, newSub, tree);
+			} else {
+				var newSub = $elm$core$Array$SubTree(
+					A4(
+						$elm$core$Array$insertTailInTree,
+						shift - $elm$core$Array$shiftStep,
+						index,
+						tail,
+						$elm$core$Elm$JsArray$singleton(value)));
+				return A3($elm$core$Elm$JsArray$unsafeSet, pos, newSub, tree);
+			}
+		}
+	});
+var $elm$core$Array$unsafeReplaceTail = F2(
+	function (newTail, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var originalTailLen = $elm$core$Elm$JsArray$length(tail);
+		var newTailLen = $elm$core$Elm$JsArray$length(newTail);
+		var newArrayLen = len + (newTailLen - originalTailLen);
+		if (_Utils_eq(newTailLen, $elm$core$Array$branchFactor)) {
+			var overflow = _Utils_cmp(newArrayLen >>> $elm$core$Array$shiftStep, 1 << startShift) > 0;
+			if (overflow) {
+				var newShift = startShift + $elm$core$Array$shiftStep;
+				var newTree = A4(
+					$elm$core$Array$insertTailInTree,
+					newShift,
+					len,
+					newTail,
+					$elm$core$Elm$JsArray$singleton(
+						$elm$core$Array$SubTree(tree)));
+				return A4($elm$core$Array$Array_elm_builtin, newArrayLen, newShift, newTree, $elm$core$Elm$JsArray$empty);
+			} else {
+				return A4(
+					$elm$core$Array$Array_elm_builtin,
+					newArrayLen,
+					startShift,
+					A4($elm$core$Array$insertTailInTree, startShift, len, newTail, tree),
+					$elm$core$Elm$JsArray$empty);
+			}
+		} else {
+			return A4($elm$core$Array$Array_elm_builtin, newArrayLen, startShift, tree, newTail);
+		}
+	});
+var $elm$core$Array$push = F2(
+	function (a, array) {
+		var tail = array.d;
+		return A2(
+			$elm$core$Array$unsafeReplaceTail,
+			A2($elm$core$Elm$JsArray$push, a, tail),
+			array);
+	});
+var $author$project$Maze$sidewinderH = F4(
+	function (model, run, i, j) {
+		sidewinderH:
+		while (true) {
+			var width = model.width;
+			var seed = model.seed;
+			var runN = A2(
+				$elm$core$Array$push,
+				_Utils_Tuple2(i, j),
+				run);
+			var _v0 = A2(
+				$elm$random$Random$step,
+				A2($elm$random$Random$int, 0, 2),
+				seed);
+			var k = _v0.a;
+			var seedN = _v0.b;
+			var shouldCloseOut = A2(
+				$author$project$Maze$atEasternBoundary,
+				model,
+				_Utils_Tuple2(i, j)) || ((!A2(
+				$author$project$Maze$atNorthernBoundary,
+				model,
+				_Utils_Tuple2(i, j))) && (!k));
+			var runNN = shouldCloseOut ? $elm$core$Array$empty : runN;
+			var _v1 = A2(
+				$elm$random$Random$step,
+				A2(
+					$elm$random$Random$int,
+					0,
+					$elm$core$Array$length(runN) - 1),
+				seedN);
+			var m = _v1.a;
+			var seedNN = _v1.b;
+			var member = function () {
+				var _v2 = A2($elm$core$Array$get, m, runN);
+				if (_v2.$ === 'Just') {
+					var mem = _v2.a;
+					return mem;
+				} else {
+					return _Utils_Tuple2(-2, -2);
+				}
+			}();
+			var modelN = function () {
+				if (shouldCloseOut) {
+					var linkQ = (!A2($author$project$Maze$atNorthernBoundary, model, member)) ? A2(
+						$elm$core$List$cons,
+						_Utils_Tuple2(
+							member,
+							$author$project$Maze$northNeighbor(member)),
+						model.linkQueue) : model.linkQueue;
+					return _Utils_update(
+						model,
+						{linkQueue: linkQ});
+				} else {
+					return _Utils_update(
+						model,
+						{
+							linkQueue: A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									_Utils_Tuple2(i, j),
+									$author$project$Maze$eastNeighbor(
+										_Utils_Tuple2(i, j))),
+								model.linkQueue)
+						});
+				}
+			}();
+			var modelNN = _Utils_update(
+				modelN,
+				{seed: seedNN});
+			if (_Utils_eq(i, width)) {
+				return modelNN;
+			} else {
+				var $temp$model = modelNN,
+					$temp$run = runNN,
+					$temp$i = i + 1,
+					$temp$j = j;
+				model = $temp$model;
+				run = $temp$run;
+				i = $temp$i;
+				j = $temp$j;
+				continue sidewinderH;
+			}
+		}
+	});
+var $author$project$Maze$sidewinder = function (model) {
+	var height = model.height;
+	var rows = A2(
+		$elm$core$List$map,
+		$elm$core$Basics$toFloat,
+		A2($elm$core$List$range, 0, height));
+	var modelN = A3(
+		$elm$core$List$foldl,
+		F2(
+			function (j, m) {
+				return A4($author$project$Maze$sidewinderH, m, $elm$core$Array$empty, 0, j);
+			}),
+		model,
+		rows);
+	return _Utils_Tuple2(modelN, _List_Nil);
+};
 var $elm$core$Tuple$mapFirst = F2(
 	function (func, _v0) {
 		var x = _v0.a;
@@ -6222,7 +6656,6 @@ var $simonh1000$elm_colorpicker$ColorPicker$calcSatLight = F3(
 				hsla,
 				{hue: currHue, lightness: 1 - (y / $simonh1000$elm_colorpicker$ColorPicker$widgetHeight), saturation: x / $simonh1000$elm_colorpicker$ColorPicker$widgetWidth}));
 	});
-var $elm$core$Basics$not = _Basics_not;
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -6345,6 +6778,560 @@ var $simonh1000$elm_colorpicker$ColorPicker$update = F3(
 			$simonh1000$elm_colorpicker$ColorPicker$State,
 			A3($simonh1000$elm_colorpicker$ColorPicker$update_, message, col, model));
 	});
+var $elm$core$Array$filter = F2(
+	function (isGood, array) {
+		return $elm$core$Array$fromList(
+			A3(
+				$elm$core$Array$foldr,
+				F2(
+					function (x, xs) {
+						return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+					}),
+				_List_Nil,
+				array));
+	});
+var $elm_community$array_extra$Array$Extra$removeWhen = F2(
+	function (pred, xs) {
+		return A2(
+			$elm$core$Array$filter,
+			A2($elm$core$Basics$composeL, $elm$core$Basics$not, pred),
+			xs);
+	});
+var $elm$core$Elm$JsArray$foldl = _JsArray_foldl;
+var $elm$core$Array$foldl = F3(
+	function (func, baseCase, _v0) {
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3($elm$core$Elm$JsArray$foldl, helper, acc, subTree);
+				} else {
+					var values = node.a;
+					return A3($elm$core$Elm$JsArray$foldl, func, acc, values);
+				}
+			});
+		return A3(
+			$elm$core$Elm$JsArray$foldl,
+			func,
+			A3($elm$core$Elm$JsArray$foldl, helper, baseCase, tree),
+			tail);
+	});
+var $elm$core$Elm$JsArray$appendN = _JsArray_appendN;
+var $elm$core$Elm$JsArray$slice = _JsArray_slice;
+var $elm$core$Array$appendHelpBuilder = F2(
+	function (tail, builder) {
+		var tailLen = $elm$core$Elm$JsArray$length(tail);
+		var notAppended = ($elm$core$Array$branchFactor - $elm$core$Elm$JsArray$length(builder.tail)) - tailLen;
+		var appended = A3($elm$core$Elm$JsArray$appendN, $elm$core$Array$branchFactor, builder.tail, tail);
+		return (notAppended < 0) ? {
+			nodeList: A2(
+				$elm$core$List$cons,
+				$elm$core$Array$Leaf(appended),
+				builder.nodeList),
+			nodeListSize: builder.nodeListSize + 1,
+			tail: A3($elm$core$Elm$JsArray$slice, notAppended, tailLen, tail)
+		} : ((!notAppended) ? {
+			nodeList: A2(
+				$elm$core$List$cons,
+				$elm$core$Array$Leaf(appended),
+				builder.nodeList),
+			nodeListSize: builder.nodeListSize + 1,
+			tail: $elm$core$Elm$JsArray$empty
+		} : {nodeList: builder.nodeList, nodeListSize: builder.nodeListSize, tail: appended});
+	});
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$core$Array$sliceLeft = F2(
+	function (from, array) {
+		var len = array.a;
+		var tree = array.c;
+		var tail = array.d;
+		if (!from) {
+			return array;
+		} else {
+			if (_Utils_cmp(
+				from,
+				$elm$core$Array$tailIndex(len)) > -1) {
+				return A4(
+					$elm$core$Array$Array_elm_builtin,
+					len - from,
+					$elm$core$Array$shiftStep,
+					$elm$core$Elm$JsArray$empty,
+					A3(
+						$elm$core$Elm$JsArray$slice,
+						from - $elm$core$Array$tailIndex(len),
+						$elm$core$Elm$JsArray$length(tail),
+						tail));
+			} else {
+				var skipNodes = (from / $elm$core$Array$branchFactor) | 0;
+				var helper = F2(
+					function (node, acc) {
+						if (node.$ === 'SubTree') {
+							var subTree = node.a;
+							return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
+						} else {
+							var leaf = node.a;
+							return A2($elm$core$List$cons, leaf, acc);
+						}
+					});
+				var leafNodes = A3(
+					$elm$core$Elm$JsArray$foldr,
+					helper,
+					_List_fromArray(
+						[tail]),
+					tree);
+				var nodesToInsert = A2($elm$core$List$drop, skipNodes, leafNodes);
+				if (!nodesToInsert.b) {
+					return $elm$core$Array$empty;
+				} else {
+					var head = nodesToInsert.a;
+					var rest = nodesToInsert.b;
+					var firstSlice = from - (skipNodes * $elm$core$Array$branchFactor);
+					var initialBuilder = {
+						nodeList: _List_Nil,
+						nodeListSize: 0,
+						tail: A3(
+							$elm$core$Elm$JsArray$slice,
+							firstSlice,
+							$elm$core$Elm$JsArray$length(head),
+							head)
+					};
+					return A2(
+						$elm$core$Array$builderToArray,
+						true,
+						A3($elm$core$List$foldl, $elm$core$Array$appendHelpBuilder, initialBuilder, rest));
+				}
+			}
+		}
+	});
+var $elm$core$Array$fetchNewTail = F4(
+	function (shift, end, treeEnd, tree) {
+		fetchNewTail:
+		while (true) {
+			var pos = $elm$core$Array$bitMask & (treeEnd >>> shift);
+			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_v0.$ === 'SubTree') {
+				var sub = _v0.a;
+				var $temp$shift = shift - $elm$core$Array$shiftStep,
+					$temp$end = end,
+					$temp$treeEnd = treeEnd,
+					$temp$tree = sub;
+				shift = $temp$shift;
+				end = $temp$end;
+				treeEnd = $temp$treeEnd;
+				tree = $temp$tree;
+				continue fetchNewTail;
+			} else {
+				var values = _v0.a;
+				return A3($elm$core$Elm$JsArray$slice, 0, $elm$core$Array$bitMask & end, values);
+			}
+		}
+	});
+var $elm$core$Array$hoistTree = F3(
+	function (oldShift, newShift, tree) {
+		hoistTree:
+		while (true) {
+			if ((_Utils_cmp(oldShift, newShift) < 1) || (!$elm$core$Elm$JsArray$length(tree))) {
+				return tree;
+			} else {
+				var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, 0, tree);
+				if (_v0.$ === 'SubTree') {
+					var sub = _v0.a;
+					var $temp$oldShift = oldShift - $elm$core$Array$shiftStep,
+						$temp$newShift = newShift,
+						$temp$tree = sub;
+					oldShift = $temp$oldShift;
+					newShift = $temp$newShift;
+					tree = $temp$tree;
+					continue hoistTree;
+				} else {
+					return tree;
+				}
+			}
+		}
+	});
+var $elm$core$Array$sliceTree = F3(
+	function (shift, endIdx, tree) {
+		var lastPos = $elm$core$Array$bitMask & (endIdx >>> shift);
+		var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, lastPos, tree);
+		if (_v0.$ === 'SubTree') {
+			var sub = _v0.a;
+			var newSub = A3($elm$core$Array$sliceTree, shift - $elm$core$Array$shiftStep, endIdx, sub);
+			return (!$elm$core$Elm$JsArray$length(newSub)) ? A3($elm$core$Elm$JsArray$slice, 0, lastPos, tree) : A3(
+				$elm$core$Elm$JsArray$unsafeSet,
+				lastPos,
+				$elm$core$Array$SubTree(newSub),
+				A3($elm$core$Elm$JsArray$slice, 0, lastPos + 1, tree));
+		} else {
+			return A3($elm$core$Elm$JsArray$slice, 0, lastPos, tree);
+		}
+	});
+var $elm$core$Array$sliceRight = F2(
+	function (end, array) {
+		var len = array.a;
+		var startShift = array.b;
+		var tree = array.c;
+		var tail = array.d;
+		if (_Utils_eq(end, len)) {
+			return array;
+		} else {
+			if (_Utils_cmp(
+				end,
+				$elm$core$Array$tailIndex(len)) > -1) {
+				return A4(
+					$elm$core$Array$Array_elm_builtin,
+					end,
+					startShift,
+					tree,
+					A3($elm$core$Elm$JsArray$slice, 0, $elm$core$Array$bitMask & end, tail));
+			} else {
+				var endIdx = $elm$core$Array$tailIndex(end);
+				var depth = $elm$core$Basics$floor(
+					A2(
+						$elm$core$Basics$logBase,
+						$elm$core$Array$branchFactor,
+						A2($elm$core$Basics$max, 1, endIdx - 1)));
+				var newShift = A2($elm$core$Basics$max, 5, depth * $elm$core$Array$shiftStep);
+				return A4(
+					$elm$core$Array$Array_elm_builtin,
+					end,
+					newShift,
+					A3(
+						$elm$core$Array$hoistTree,
+						startShift,
+						newShift,
+						A3($elm$core$Array$sliceTree, startShift, endIdx, tree)),
+					A4($elm$core$Array$fetchNewTail, startShift, end, endIdx, tree));
+			}
+		}
+	});
+var $elm$core$Array$translateIndex = F2(
+	function (index, _v0) {
+		var len = _v0.a;
+		var posIndex = (index < 0) ? (len + index) : index;
+		return (posIndex < 0) ? 0 : ((_Utils_cmp(posIndex, len) > 0) ? len : posIndex);
+	});
+var $elm$core$Array$slice = F3(
+	function (from, to, array) {
+		var correctTo = A2($elm$core$Array$translateIndex, to, array);
+		var correctFrom = A2($elm$core$Array$translateIndex, from, array);
+		return (_Utils_cmp(correctFrom, correctTo) > 0) ? $elm$core$Array$empty : A2(
+			$elm$core$Array$sliceLeft,
+			correctFrom,
+			A2($elm$core$Array$sliceRight, correctTo, array));
+	});
+var $elm$core$Debug$log = _Debug_log;
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm_community$array_extra$Array$Extra$apply = F2(
+	function (fs, xs) {
+		var l = A2(
+			$elm$core$Basics$min,
+			$elm$core$Array$length(fs),
+			$elm$core$Array$length(xs));
+		var fs_ = $elm$core$Array$toList(
+			A3($elm$core$Array$slice, 0, l, fs));
+		return $elm$core$Array$fromList(
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				A2(
+					$elm$core$List$indexedMap,
+					F2(
+						function (n, f) {
+							return A2(
+								$elm$core$Maybe$map,
+								f,
+								A2($elm$core$Array$get, n, xs));
+						}),
+					fs_)));
+	});
+var $elm$core$Elm$JsArray$map = _JsArray_map;
+var $elm$core$Array$map = F2(
+	function (func, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = function (node) {
+			if (node.$ === 'SubTree') {
+				var subTree = node.a;
+				return $elm$core$Array$SubTree(
+					A2($elm$core$Elm$JsArray$map, helper, subTree));
+			} else {
+				var values = node.a;
+				return $elm$core$Array$Leaf(
+					A2($elm$core$Elm$JsArray$map, func, values));
+			}
+		};
+		return A4(
+			$elm$core$Array$Array_elm_builtin,
+			len,
+			startShift,
+			A2($elm$core$Elm$JsArray$map, helper, tree),
+			A2($elm$core$Elm$JsArray$map, func, tail));
+	});
+var $elm_community$array_extra$Array$Extra$map2 = F2(
+	function (f, ws) {
+		return $elm_community$array_extra$Array$Extra$apply(
+			A2($elm$core$Array$map, f, ws));
+	});
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $elm_community$array_extra$Array$Extra$zip = $elm_community$array_extra$Array$Extra$map2($elm$core$Tuple$pair);
+var $author$project$Maze$wilsonsAddLinks = F2(
+	function (model, path) {
+		var ls = A2(
+			$elm_community$array_extra$Array$Extra$zip,
+			A3(
+				$elm$core$Array$slice,
+				0,
+				$elm$core$Array$length(path) - 1,
+				path),
+			A3(
+				$elm$core$Array$slice,
+				1,
+				$elm$core$Array$length(path),
+				path));
+		var linkQ = A3($elm$core$Array$foldl, $elm$core$List$cons, model.linkQueue, ls);
+		var lg = A2(
+			$elm$core$Debug$log,
+			'(path, ls)',
+			_Utils_Tuple2(path, ls));
+		return _Utils_update(
+			model,
+			{linkQueue: linkQ});
+	});
+var $elm_community$list_extra$List$Extra$findIndexHelp = F3(
+	function (index, predicate, list) {
+		findIndexHelp:
+		while (true) {
+			if (!list.b) {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (predicate(x)) {
+					return $elm$core$Maybe$Just(index);
+				} else {
+					var $temp$index = index + 1,
+						$temp$predicate = predicate,
+						$temp$list = xs;
+					index = $temp$index;
+					predicate = $temp$predicate;
+					list = $temp$list;
+					continue findIndexHelp;
+				}
+			}
+		}
+	});
+var $elm_community$list_extra$List$Extra$findIndex = $elm_community$list_extra$List$Extra$findIndexHelp(0);
+var $elm_community$list_extra$List$Extra$elemIndex = function (x) {
+	return $elm_community$list_extra$List$Extra$findIndex(
+		$elm$core$Basics$eq(x));
+};
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Maze$wilsonsBuildPath = F4(
+	function (model, unvis, path, cell) {
+		wilsonsBuildPath:
+		while (true) {
+			if (!_Utils_eq(
+				A2(
+					$elm$core$Array$filter,
+					$elm$core$Basics$eq(cell),
+					unvis),
+				$elm$core$Array$empty)) {
+				var pathL = $elm$core$Array$toList(path);
+				var ns = $elm$core$Array$fromList(
+					A2($author$project$Maze$neighbors, model, cell));
+				var _v0 = A2(
+					$elm$random$Random$step,
+					A2(
+						$elm$random$Random$int,
+						0,
+						$elm$core$Array$length(ns) - 1),
+					model.seed);
+				var cellIdx = _v0.a;
+				var seedN = _v0.b;
+				var n = function () {
+					var _v2 = A2($elm$core$Array$get, cellIdx, ns);
+					if (_v2.$ === 'Just') {
+						var a = _v2.a;
+						return a;
+					} else {
+						return _Utils_Tuple2(-2, -2);
+					}
+				}();
+				var position = function () {
+					var _v1 = A2($elm_community$list_extra$List$Extra$elemIndex, n, pathL);
+					if (_v1.$ === 'Just') {
+						var k = _v1.a;
+						return k;
+					} else {
+						return -1;
+					}
+				}();
+				var pathN = (!_Utils_eq(position, -1)) ? A3($elm$core$Array$slice, 0, position + 1, path) : A2($elm$core$Array$push, n, path);
+				var modelN = _Utils_update(
+					model,
+					{seed: seedN});
+				var $temp$model = modelN,
+					$temp$unvis = unvis,
+					$temp$path = pathN,
+					$temp$cell = n;
+				model = $temp$model;
+				unvis = $temp$unvis;
+				path = $temp$path;
+				cell = $temp$cell;
+				continue wilsonsBuildPath;
+			} else {
+				return _Utils_Tuple2(model, path);
+			}
+		}
+	});
+var $author$project$Maze$wilsonsH = F2(
+	function (model, unvis) {
+		wilsonsH:
+		while (true) {
+			if ($elm$core$Array$length(unvis) > 0) {
+				var _v0 = A2(
+					$elm$random$Random$step,
+					A2(
+						$elm$random$Random$int,
+						0,
+						$elm$core$Array$length(unvis) - 1),
+					model.seed);
+				var cellIdx = _v0.a;
+				var seedN = _v0.b;
+				var cell = function () {
+					var _v2 = A2($elm$core$Array$get, cellIdx, unvis);
+					if (_v2.$ === 'Just') {
+						var a = _v2.a;
+						return a;
+					} else {
+						return _Utils_Tuple2(-2, -2);
+					}
+				}();
+				var modelN = _Utils_update(
+					model,
+					{seed: seedN});
+				var _v1 = A4(
+					$author$project$Maze$wilsonsBuildPath,
+					modelN,
+					unvis,
+					$elm$core$Array$fromList(
+						_List_fromArray(
+							[cell])),
+					cell);
+				var modelNN = _v1.a;
+				var path = _v1.b;
+				var modelNNN = A2($author$project$Maze$wilsonsAddLinks, modelNN, path);
+				var unvisN = A3(
+					$elm$core$Array$foldl,
+					function (p) {
+						return $elm_community$array_extra$Array$Extra$removeWhen(
+							$elm$core$Basics$eq(p));
+					},
+					unvis,
+					A3(
+						$elm$core$Array$slice,
+						0,
+						$elm$core$Array$length(path) - 1,
+						path));
+				var $temp$model = modelNNN,
+					$temp$unvis = unvisN;
+				model = $temp$model;
+				unvis = $temp$unvis;
+				continue wilsonsH;
+			} else {
+				return model;
+			}
+		}
+	});
+var $author$project$Maze$wilsons = function (model) {
+	var width = model.width;
+	var height = model.height;
+	var unvis = $elm$core$Array$fromList(
+		A2(
+			$elm$core$List$concatMap,
+			function (j) {
+				return A2(
+					$elm$core$List$map,
+					$elm$core$Basics$apR(j),
+					A2(
+						$elm$core$List$map,
+						F2(
+							function (i, k) {
+								return _Utils_Tuple2(i, k);
+							}),
+						A2(
+							$elm$core$List$map,
+							$elm$core$Basics$toFloat,
+							A2($elm$core$List$range, 0, width))));
+			},
+			A2(
+				$elm$core$List$map,
+				$elm$core$Basics$toFloat,
+				A2($elm$core$List$range, 0, height))));
+	var _v0 = A2(
+		$elm$random$Random$step,
+		A2(
+			$elm$random$Random$int,
+			0,
+			$elm$core$Array$length(unvis) - 1),
+		model.seed);
+	var cellIdx = _v0.a;
+	var seedN = _v0.b;
+	var cell = function () {
+		var _v1 = A2($elm$core$Array$get, cellIdx, unvis);
+		if (_v1.$ === 'Just') {
+			var a = _v1.a;
+			return a;
+		} else {
+			return _Utils_Tuple2(-2, -2);
+		}
+	}();
+	var unvisN = A2(
+		$elm_community$array_extra$Array$Extra$removeWhen,
+		$elm$core$Basics$eq(cell),
+		unvis);
+	var modelN = _Utils_update(
+		model,
+		{seed: seedN});
+	var modelNN = A2($author$project$Maze$wilsonsH, modelN, unvisN);
+	return _Utils_Tuple2(modelNN, _List_Nil);
+};
 var $author$project$Maze$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -6366,60 +7353,83 @@ var $author$project$Maze$update = F2(
 								A2(
 									$elm$core$List$map,
 									$elm$core$Basics$toFloat,
-									A2(
-										$elm$core$List$range,
-										0,
-										$elm$core$Basics$round(width)))));
+									A2($elm$core$List$range, 0, width))));
 					},
 					A2(
 						$elm$core$List$map,
 						$elm$core$Basics$toFloat,
-						A2(
-							$elm$core$List$range,
-							0,
-							$elm$core$Basics$round(height))));
-				var batch = A2(
-					$elm$core$List$map,
-					function (_v1) {
-						var i = _v1.a;
-						var j = _v1.b;
-						var p1 = _Utils_Tuple2(i, j);
-						return A2(
-							$elm$random$Random$generate,
-							function (k) {
-								return A2(
-									$author$project$Maze$AddLink,
-									p1,
-									function () {
-										var _v2 = A2(
-											$elm$core$Array$get,
-											k,
-											$elm$core$Array$fromList(
-												A2($author$project$Maze$northEastNeighbors, width, p1)));
-										if (_v2.$ === 'Just') {
-											var p2 = _v2.a;
-											return p2;
-										} else {
-											return _Utils_Tuple2(-2, -2);
-										}
-									}());
-							},
-							A3($author$project$Maze$generatorLinkArgs, height, width, p1));
-					},
-					cells);
+						A2($elm$core$List$range, 0, height)));
+				var modelN = _Utils_update(
+					model,
+					{
+						animating: true,
+						distances: $elm$core$Dict$empty,
+						height: height,
+						linkQueue: _List_Nil,
+						maxDist: 0,
+						neighborQueue: $elm$core$Dict$empty,
+						neighborhood: $elm$core$Dict$empty,
+						path: _List_Nil,
+						unvisited: $elm$core$List$length(cells) - 1,
+						width: width
+					});
+				var _v1 = function () {
+					var _v2 = model.algorithm;
+					switch (_v2) {
+						case 'BinaryTree':
+							return $author$project$Maze$binaryTree(modelN);
+						case 'AldousBroder':
+							return $author$project$Maze$aldousBroder(modelN);
+						case 'Sidewinder':
+							return $author$project$Maze$sidewinder(modelN);
+						case 'Wilsons':
+							return $author$project$Maze$wilsons(modelN);
+						default:
+							return $author$project$Maze$binaryTree(modelN);
+					}
+				}();
+				var modelNN = _v1.a;
+				var batch = _v1.b;
 				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							animating: true,
-							distances: $elm$core$Dict$empty,
-							height: $elm$core$Basics$round(height),
-							linkQueue: _List_Nil,
-							maxDist: 0,
-							neighborhood: $elm$core$Dict$empty,
-							width: $elm$core$Basics$round(width)
-						}),
+					modelNN,
 					$elm$core$Platform$Cmd$batch(batch));
+			case 'ABAddLink':
+				var p1 = msg.a;
+				var p2 = msg.b;
+				var modelN = _Utils_eq(
+					A2($author$project$Maze$links, model.neighborQueue, p2),
+					_List_Nil) ? _Utils_update(
+					model,
+					{
+						linkQueue: A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(p1, p2),
+							model.linkQueue),
+						neighborQueue: A3($author$project$Maze$addLink, p1, p2, model.neighborQueue),
+						unvisited: model.unvisited - 1
+					}) : model;
+				var next = (modelN.unvisited > 0) ? A2(
+					$elm$random$Random$generate,
+					function (k) {
+						return A2(
+							$author$project$Maze$ABAddLink,
+							p2,
+							function () {
+								var _v3 = A2(
+									$elm$core$Array$get,
+									k,
+									$elm$core$Array$fromList(
+										A2($author$project$Maze$neighbors, model, p2)));
+								if (_v3.$ === 'Just') {
+									var p3 = _v3.a;
+									return p3;
+								} else {
+									return _Utils_Tuple2(-2, -2);
+								}
+							}());
+					},
+					A2($author$project$Maze$generatorABLinkArgs, model, p2)) : $elm$core$Platform$Cmd$none;
+				return _Utils_Tuple2(modelN, next);
 			case 'AddLink':
 				var p1 = msg.a;
 				var p2 = msg.b;
@@ -6436,16 +7446,16 @@ var $author$project$Maze$update = F2(
 			case 'Tick':
 				return _Utils_Tuple2(
 					function () {
-						var _v3 = model.linkQueue;
-						if (!_v3.b) {
+						var _v4 = model.linkQueue;
+						if (!_v4.b) {
 							return _Utils_update(
 								model,
 								{animating: false});
 						} else {
-							var _v4 = _v3.a;
-							var p1 = _v4.a;
-							var p2 = _v4.b;
-							var rest = _v3.b;
+							var _v5 = _v4.a;
+							var p1 = _v5.a;
+							var p2 = _v5.b;
+							var rest = _v4.b;
 							return _Utils_update(
 								model,
 								{
@@ -6491,7 +7501,7 @@ var $author$project$Maze$update = F2(
 				return _Utils_Tuple2(
 					model,
 					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
-			case 'Color':
+			case 'Solve':
 				var modelN = A2(
 					$author$project$Maze$distances,
 					model,
@@ -6499,30 +7509,36 @@ var $author$project$Maze$update = F2(
 						[
 							_Utils_Tuple2(0, 0)
 						]));
+				var path = $elm$core$List$reverse(
+					A2(
+						$author$project$Maze$shortestPath,
+						modelN,
+						_Utils_Tuple2(0, model.height)));
 				var maxDist = A3(
 					$elm$core$Dict$foldl,
 					F3(
-						function (_v5, d, m) {
+						function (_v6, d, m) {
 							return (_Utils_cmp(d, m) > 0) ? d : m;
 						}),
 					0,
 					modelN.distances);
-				var lg = A2($elm$core$Debug$log, 'maxDist', maxDist);
 				return _Utils_Tuple2(
 					_Utils_update(
 						modelN,
-						{maxDist: maxDist}),
+						{maxDist: maxDist, path: path}),
 					$elm$core$Platform$Cmd$none);
 			case 'Algorithm':
 				var s = msg.a;
 				return _Utils_Tuple2(
-					model,
+					_Utils_update(
+						model,
+						{algorithm: s}),
 					A3($andrewMacmurray$elm_delay$Delay$after, 0, $andrewMacmurray$elm_delay$Delay$Millisecond, $author$project$Maze$Reset));
 			default:
 				var m = msg.a;
-				var _v6 = A3($simonh1000$elm_colorpicker$ColorPicker$update, m, model.color, model.colorPicker);
-				var cp = _v6.a;
-				var color = _v6.b;
+				var _v7 = A3($simonh1000$elm_colorpicker$ColorPicker$update, m, model.color, model.colorPicker);
+				var cp = _v7.a;
+				var color = _v7.b;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
@@ -6533,6 +7549,9 @@ var $author$project$Maze$update = F2(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
+var $author$project$Maze$Algorithm = function (a) {
+	return {$: 'Algorithm', a: a};
+};
 var $author$project$Maze$Animate = {$: 'Animate'};
 var $author$project$Maze$AnimationDelay = function (a) {
 	return {$: 'AnimationDelay', a: a};
@@ -6543,136 +7562,61 @@ var $author$project$Maze$CanvasSize = function (a) {
 var $author$project$Maze$CellSize = function (a) {
 	return {$: 'CellSize', a: a};
 };
-var $author$project$Maze$Color = {$: 'Color'};
 var $author$project$Maze$ColorPickerMsg = function (a) {
 	return {$: 'ColorPickerMsg', a: a};
 };
+var $author$project$Maze$Solve = {$: 'Solve'};
 var $author$project$Maze$WallWidth = function (a) {
 	return {$: 'WallWidth', a: a};
 };
-var $joakin$elm_canvas$Canvas$Internal$Canvas$LineTo = function (a) {
-	return {$: 'LineTo', a: a};
-};
-var $joakin$elm_canvas$Canvas$lineTo = function (point) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$LineTo(point);
-};
-var $joakin$elm_canvas$Canvas$Internal$Canvas$MoveTo = function (a) {
-	return {$: 'MoveTo', a: a};
-};
-var $joakin$elm_canvas$Canvas$moveTo = function (point) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$MoveTo(point);
-};
-var $author$project$Maze$drawLineIfnt = F2(
-	function (isN, p) {
-		return isN ? $joakin$elm_canvas$Canvas$moveTo(p) : $joakin$elm_canvas$Canvas$lineTo(p);
+var $avh4$elm_color$Color$blue = A4($avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
+var $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableClear = F3(
+	function (a, b, c) {
+		return {$: 'DrawableClear', a: a, b: b, c: c};
 	});
-var $elm$core$List$any = F2(
-	function (isOkay, list) {
-		any:
-		while (true) {
-			if (!list.b) {
-				return false;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				if (isOkay(x)) {
-					return true;
-				} else {
-					var $temp$isOkay = isOkay,
-						$temp$list = xs;
-					isOkay = $temp$isOkay;
-					list = $temp$list;
-					continue any;
-				}
-			}
-		}
-	});
-var $elm$core$List$member = F2(
-	function (x, xs) {
-		return A2(
-			$elm$core$List$any,
-			function (a) {
-				return _Utils_eq(a, x);
-			},
-			xs);
-	});
-var $author$project$Maze$isLinked = F3(
-	function (ns, p1, p2) {
-		var lns = A2($author$project$Maze$links, ns, p1);
-		var res = A2($elm$core$List$member, p2, lns);
-		return res;
-	});
-var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommand = function (a) {
-	return {$: 'SettingCommand', a: a};
-};
-var $elm$json$Json$Encode$object = function (pairs) {
-	return _Json_wrap(
-		A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v0, obj) {
-					var k = _v0.a;
-					var v = _v0.b;
-					return A3(_Json_addField, k, v, obj);
-				}),
-			_Json_emptyObject(_Utils_Tuple0),
-			pairs));
-};
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$field = F2(
-	function (name, value) {
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('field')),
-					_Utils_Tuple2(
-					'name',
-					$elm$json$Json$Encode$string(name)),
-					_Utils_Tuple2('value', value)
-				]));
-	});
-var $elm$json$Json$Encode$float = _Json_wrap;
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$lineWidth = function (value) {
-	return A2(
-		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$field,
-		'lineWidth',
-		$elm$json$Json$Encode$float(value));
-};
-var $joakin$elm_canvas$Canvas$Settings$Line$lineWidth = function (width) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommand(
-		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$lineWidth(width));
-};
-var $joakin$elm_canvas$Canvas$Internal$Canvas$Path = F2(
-	function (a, b) {
-		return {$: 'Path', a: a, b: b};
-	});
-var $joakin$elm_canvas$Canvas$path = F2(
-	function (startingPoint, segments) {
-		return A2($joakin$elm_canvas$Canvas$Internal$Canvas$Path, startingPoint, segments);
-	});
-var $avh4$elm_color$Color$scaleFrom255 = function (c) {
-	return c / 255;
-};
-var $avh4$elm_color$Color$rgb255 = F3(
-	function (r, g, b) {
-		return A4(
-			$avh4$elm_color$Color$RgbaSpace,
-			$avh4$elm_color$Color$scaleFrom255(r),
-			$avh4$elm_color$Color$scaleFrom255(g),
-			$avh4$elm_color$Color$scaleFrom255(b),
-			1.0);
-	});
-var $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableShapes = function (a) {
-	return {$: 'DrawableShapes', a: a};
-};
 var $joakin$elm_canvas$Canvas$Internal$Canvas$NotSpecified = {$: 'NotSpecified'};
 var $joakin$elm_canvas$Canvas$Renderable = function (a) {
 	return {$: 'Renderable', a: a};
 };
+var $joakin$elm_canvas$Canvas$clear = F3(
+	function (point, w, h) {
+		return $joakin$elm_canvas$Canvas$Renderable(
+			{
+				commands: _List_Nil,
+				drawOp: $joakin$elm_canvas$Canvas$Internal$Canvas$NotSpecified,
+				drawable: A3($joakin$elm_canvas$Canvas$Internal$Canvas$DrawableClear, point, w, h)
+			});
+	});
+var $aforemny$material_components_web_elm$Material$Button$Internal$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $aforemny$material_components_web_elm$Material$Button$config = $aforemny$material_components_web_elm$Material$Button$Internal$Config(
+	{additionalAttributes: _List_Nil, dense: false, disabled: false, href: $elm$core$Maybe$Nothing, icon: $elm$core$Maybe$Nothing, onClick: $elm$core$Maybe$Nothing, target: $elm$core$Maybe$Nothing, trailingIcon: false});
+var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$core$String$fromFloat = _String_fromNumber;
 var $joakin$elm_canvas$Canvas$Internal$Canvas$Fill = function (a) {
 	return {$: 'Fill', a: a};
+};
+var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp = function (a) {
+	return {$: 'SettingDrawOp', a: a};
+};
+var $joakin$elm_canvas$Canvas$Settings$fill = function (color) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp(
+		$joakin$elm_canvas$Canvas$Internal$Canvas$Fill(color));
+};
+var $avh4$elm_color$Color$fromRgba = function (components) {
+	return A4($avh4$elm_color$Color$RgbaSpace, components.red, components.green, components.blue, components.alpha);
+};
+var $joakin$elm_canvas$Canvas$Internal$Canvas$Rect = F3(
+	function (a, b, c) {
+		return {$: 'Rect', a: a, b: b, c: c};
+	});
+var $joakin$elm_canvas$Canvas$rect = F3(
+	function (pos, width, height) {
+		return A3($joakin$elm_canvas$Canvas$Internal$Canvas$Rect, pos, width, height);
+	});
+var $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableShapes = function (a) {
+	return {$: 'DrawableShapes', a: a};
 };
 var $joakin$elm_canvas$Canvas$Internal$Canvas$FillAndStroke = F2(
 	function (a, b) {
@@ -6795,233 +7739,6 @@ var $joakin$elm_canvas$Canvas$shapes = F2(
 					drawable: $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableShapes(ss)
 				}));
 	});
-var $author$project$Maze$southNeighbor = function (_v0) {
-	var x = _v0.a;
-	var y = _v0.b;
-	return _Utils_Tuple2(x, y + 1);
-};
-var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp = function (a) {
-	return {$: 'SettingDrawOp', a: a};
-};
-var $joakin$elm_canvas$Canvas$Settings$stroke = function (color) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp(
-		$joakin$elm_canvas$Canvas$Internal$Canvas$Stroke(color));
-};
-var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommands = function (a) {
-	return {$: 'SettingCommands', a: a};
-};
-var $elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				$elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
-	});
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn = F2(
-	function (name, args) {
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('function')),
-					_Utils_Tuple2(
-					'name',
-					$elm$json$Json$Encode$string(name)),
-					_Utils_Tuple2(
-					'args',
-					A2($elm$json$Json$Encode$list, $elm$core$Basics$identity, args))
-				]));
-	});
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$rotate = function (angle) {
-	return A2(
-		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
-		'rotate',
-		_List_fromArray(
-			[
-				$elm$json$Json$Encode$float(angle)
-			]));
-};
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$scale = F2(
-	function (x, y) {
-		return A2(
-			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
-			'scale',
-			_List_fromArray(
-				[
-					$elm$json$Json$Encode$float(x),
-					$elm$json$Json$Encode$float(y)
-				]));
-	});
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$transform = F6(
-	function (a, b, c, d, e, f) {
-		return A2(
-			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
-			'transform',
-			_List_fromArray(
-				[
-					$elm$json$Json$Encode$float(a),
-					$elm$json$Json$Encode$float(b),
-					$elm$json$Json$Encode$float(c),
-					$elm$json$Json$Encode$float(d),
-					$elm$json$Json$Encode$float(e),
-					$elm$json$Json$Encode$float(f)
-				]));
-	});
-var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$translate = F2(
-	function (x, y) {
-		return A2(
-			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
-			'translate',
-			_List_fromArray(
-				[
-					$elm$json$Json$Encode$float(x),
-					$elm$json$Json$Encode$float(y)
-				]));
-	});
-var $joakin$elm_canvas$Canvas$Settings$Advanced$transform = function (transforms) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommands(
-		A2(
-			$elm$core$List$map,
-			function (t) {
-				switch (t.$) {
-					case 'Rotate':
-						var angle = t.a;
-						return $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$rotate(angle);
-					case 'Scale':
-						var x = t.a;
-						var y = t.b;
-						return A2($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$scale, x, y);
-					case 'Translate':
-						var x = t.a;
-						var y = t.b;
-						return A2($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$translate, x, y);
-					default:
-						var m11 = t.a.m11;
-						var m12 = t.a.m12;
-						var m21 = t.a.m21;
-						var m22 = t.a.m22;
-						var dx = t.a.dx;
-						var dy = t.a.dy;
-						return A6($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$transform, m11, m12, m21, m22, dx, dy);
-				}
-			},
-			transforms));
-};
-var $joakin$elm_canvas$Canvas$Settings$Advanced$Translate = F2(
-	function (a, b) {
-		return {$: 'Translate', a: a, b: b};
-	});
-var $joakin$elm_canvas$Canvas$Settings$Advanced$translate = $joakin$elm_canvas$Canvas$Settings$Advanced$Translate;
-var $author$project$Maze$westNeighbor = function (_v0) {
-	var x = _v0.a;
-	var y = _v0.b;
-	return _Utils_Tuple2(x - 1, y);
-};
-var $author$project$Maze$cell = F3(
-	function (model, i, j) {
-		var w = model.cellSize;
-		var x1 = 4 + (i * w);
-		var x2 = x1 + w;
-		var y1 = 4 + (j * w);
-		var y2 = y1 + w;
-		var ns = model.neighborhood;
-		return A2(
-			$joakin$elm_canvas$Canvas$shapes,
-			_List_fromArray(
-				[
-					$joakin$elm_canvas$Canvas$Settings$stroke(
-					A3($avh4$elm_color$Color$rgb255, 0, 0, 0)),
-					$joakin$elm_canvas$Canvas$Settings$Advanced$transform(
-					_List_fromArray(
-						[
-							A2($joakin$elm_canvas$Canvas$Settings$Advanced$translate, 0, 0)
-						])),
-					$joakin$elm_canvas$Canvas$Settings$Line$lineWidth(model.wallWidth)
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$joakin$elm_canvas$Canvas$path,
-					_Utils_Tuple2(x1, y1),
-					_List_fromArray(
-						[
-							A2(
-							$author$project$Maze$drawLineIfnt,
-							A3(
-								$author$project$Maze$isLinked,
-								ns,
-								_Utils_Tuple2(i, j),
-								$author$project$Maze$northNeighbor(
-									_Utils_Tuple2(i, j))),
-							_Utils_Tuple2(x2, y1)),
-							A2(
-							$author$project$Maze$drawLineIfnt,
-							A3(
-								$author$project$Maze$isLinked,
-								ns,
-								_Utils_Tuple2(i, j),
-								$author$project$Maze$eastNeighbor(
-									_Utils_Tuple2(i, j))),
-							_Utils_Tuple2(x2, y2)),
-							A2(
-							$author$project$Maze$drawLineIfnt,
-							A3(
-								$author$project$Maze$isLinked,
-								ns,
-								_Utils_Tuple2(i, j),
-								$author$project$Maze$southNeighbor(
-									_Utils_Tuple2(i, j))),
-							_Utils_Tuple2(x1, y2)),
-							A2(
-							$author$project$Maze$drawLineIfnt,
-							A3(
-								$author$project$Maze$isLinked,
-								ns,
-								_Utils_Tuple2(i, j),
-								$author$project$Maze$westNeighbor(
-									_Utils_Tuple2(i, j))),
-							_Utils_Tuple2(x1, y1 - (model.wallWidth / 2)))
-						]))
-				]));
-	});
-var $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableClear = F3(
-	function (a, b, c) {
-		return {$: 'DrawableClear', a: a, b: b, c: c};
-	});
-var $joakin$elm_canvas$Canvas$clear = F3(
-	function (point, w, h) {
-		return $joakin$elm_canvas$Canvas$Renderable(
-			{
-				commands: _List_Nil,
-				drawOp: $joakin$elm_canvas$Canvas$Internal$Canvas$NotSpecified,
-				drawable: A3($joakin$elm_canvas$Canvas$Internal$Canvas$DrawableClear, point, w, h)
-			});
-	});
-var $aforemny$material_components_web_elm$Material$Button$Internal$Config = function (a) {
-	return {$: 'Config', a: a};
-};
-var $aforemny$material_components_web_elm$Material$Button$config = $aforemny$material_components_web_elm$Material$Button$Internal$Config(
-	{additionalAttributes: _List_Nil, dense: false, disabled: false, href: $elm$core$Maybe$Nothing, icon: $elm$core$Maybe$Nothing, onClick: $elm$core$Maybe$Nothing, target: $elm$core$Maybe$Nothing, trailingIcon: false});
-var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$core$String$fromFloat = _String_fromNumber;
-var $joakin$elm_canvas$Canvas$Settings$fill = function (color) {
-	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp(
-		$joakin$elm_canvas$Canvas$Internal$Canvas$Fill(color));
-};
-var $avh4$elm_color$Color$fromRgba = function (components) {
-	return A4($avh4$elm_color$Color$RgbaSpace, components.red, components.green, components.blue, components.alpha);
-};
-var $joakin$elm_canvas$Canvas$Internal$Canvas$Rect = F3(
-	function (a, b, c) {
-		return {$: 'Rect', a: a, b: b, c: c};
-	});
-var $joakin$elm_canvas$Canvas$rect = F3(
-	function (pos, width, height) {
-		return A3($joakin$elm_canvas$Canvas$Internal$Canvas$Rect, pos, width, height);
-	});
 var $avh4$elm_color$Color$toRgba = function (_v0) {
 	var r = _v0.a;
 	var g = _v0.b;
@@ -7059,6 +7776,54 @@ var $author$project$Maze$ground = F4(
 	});
 var $elm$html$Html$h4 = _VirtualDom_node('h4');
 var $elm$html$Html$input = _VirtualDom_node('input');
+var $joakin$elm_canvas$Canvas$Internal$Canvas$LineTo = function (a) {
+	return {$: 'LineTo', a: a};
+};
+var $joakin$elm_canvas$Canvas$lineTo = function (point) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$LineTo(point);
+};
+var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommand = function (a) {
+	return {$: 'SettingCommand', a: a};
+};
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$field = F2(
+	function (name, value) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'type',
+					$elm$json$Json$Encode$string('field')),
+					_Utils_Tuple2(
+					'name',
+					$elm$json$Json$Encode$string(name)),
+					_Utils_Tuple2('value', value)
+				]));
+	});
+var $elm$json$Json$Encode$float = _Json_wrap;
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$lineWidth = function (value) {
+	return A2(
+		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$field,
+		'lineWidth',
+		$elm$json$Json$Encode$float(value));
+};
+var $joakin$elm_canvas$Canvas$Settings$Line$lineWidth = function (width) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommand(
+		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$lineWidth(width));
+};
 var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
 var $elm$html$Html$Attributes$stringProperty = F2(
@@ -7084,7 +7849,6 @@ var $elm$html$Html$Events$stopPropagationOn = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
 	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
@@ -7105,19 +7869,17 @@ var $elm$html$Html$Events$onInput = function (tagger) {
 			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
 };
 var $elm$html$Html$option = _VirtualDom_node('option');
+var $joakin$elm_canvas$Canvas$Internal$Canvas$Path = F2(
+	function (a, b) {
+		return {$: 'Path', a: a, b: b};
+	});
+var $joakin$elm_canvas$Canvas$path = F2(
+	function (startingPoint, segments) {
+		return A2($joakin$elm_canvas$Canvas$Internal$Canvas$Path, startingPoint, segments);
+	});
 var $aforemny$material_components_web_elm$Material$Button$Raised = {$: 'Raised'};
 var $elm$html$Html$a = _VirtualDom_node('a');
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -7232,7 +7994,6 @@ var $aforemny$material_components_web_elm$Material$Button$leadingIconElt = funct
 	var trailingIcon = config_.a.trailingIcon;
 	return (!trailingIcon) ? $aforemny$material_components_web_elm$Material$Button$iconElt(config_) : $elm$core$Maybe$Nothing;
 };
-var $elm$core$Basics$neq = _Utils_notEqual;
 var $elm$virtual_dom$VirtualDom$node = function (tag) {
 	return _VirtualDom_node(
 		_VirtualDom_noScript(tag));
@@ -7354,6 +8115,10 @@ var $aforemny$material_components_web_elm$Material$Button$setOnClick = F2(
 					onClick: $elm$core$Maybe$Just(onClick)
 				}));
 	});
+var $joakin$elm_canvas$Canvas$Settings$stroke = function (color) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingDrawOp(
+		$joakin$elm_canvas$Canvas$Internal$Canvas$Stroke(color));
+};
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $aforemny$material_components_web_elm$Material$Typography$subtitle1 = $elm$html$Html$Attributes$class('mdc-typography--subtitle1');
@@ -7361,6 +8126,15 @@ var $aforemny$material_components_web_elm$Material$Typography$subtitle2 = $elm$h
 var $elm$core$String$toFloat = _String_toFloat;
 var $elm$html$Html$canvas = _VirtualDom_node('canvas');
 var $joakin$elm_canvas$Canvas$cnvs = A2($elm$html$Html$canvas, _List_Nil, _List_Nil);
+var $elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$commands = function (list) {
 	return A2(
 		$elm$html$Html$Attributes$property,
@@ -7379,6 +8153,22 @@ var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
 };
 var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$empty = _List_Nil;
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn = F2(
+	function (name, args) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'type',
+					$elm$json$Json$Encode$string('function')),
+					_Utils_Tuple2(
+					'name',
+					$elm$json$Json$Encode$string(name)),
+					_Utils_Tuple2(
+					'args',
+					A2($elm$json$Json$Encode$list, $elm$core$Basics$identity, args))
+				]));
+	});
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$beginPath = A2($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn, 'beginPath', _List_Nil);
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$clearRect = F4(
 	function (x, y, width, height) {
@@ -7926,8 +8716,6 @@ var $joakin$elm_canvas$Canvas$render = function (entities) {
 var $joakin$elm_canvas$Canvas$Internal$Texture$TImage = function (a) {
 	return {$: 'TImage', a: a};
 };
-var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $elm$json$Json$Decode$map3 = _Json_map3;
 var $elm$json$Json$Decode$value = _Json_decodeValue;
 var $joakin$elm_canvas$Canvas$Internal$Texture$decodeTextureImage = A2(
@@ -8015,6 +8803,89 @@ var $joakin$elm_canvas$Canvas$toHtml = F3(
 			attrs,
 			entities);
 	});
+var $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommands = function (a) {
+	return {$: 'SettingCommands', a: a};
+};
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$rotate = function (angle) {
+	return A2(
+		$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
+		'rotate',
+		_List_fromArray(
+			[
+				$elm$json$Json$Encode$float(angle)
+			]));
+};
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$scale = F2(
+	function (x, y) {
+		return A2(
+			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
+			'scale',
+			_List_fromArray(
+				[
+					$elm$json$Json$Encode$float(x),
+					$elm$json$Json$Encode$float(y)
+				]));
+	});
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$transform = F6(
+	function (a, b, c, d, e, f) {
+		return A2(
+			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
+			'transform',
+			_List_fromArray(
+				[
+					$elm$json$Json$Encode$float(a),
+					$elm$json$Json$Encode$float(b),
+					$elm$json$Json$Encode$float(c),
+					$elm$json$Json$Encode$float(d),
+					$elm$json$Json$Encode$float(e),
+					$elm$json$Json$Encode$float(f)
+				]));
+	});
+var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$translate = F2(
+	function (x, y) {
+		return A2(
+			$joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn,
+			'translate',
+			_List_fromArray(
+				[
+					$elm$json$Json$Encode$float(x),
+					$elm$json$Json$Encode$float(y)
+				]));
+	});
+var $joakin$elm_canvas$Canvas$Settings$Advanced$transform = function (transforms) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$SettingCommands(
+		A2(
+			$elm$core$List$map,
+			function (t) {
+				switch (t.$) {
+					case 'Rotate':
+						var angle = t.a;
+						return $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$rotate(angle);
+					case 'Scale':
+						var x = t.a;
+						var y = t.b;
+						return A2($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$scale, x, y);
+					case 'Translate':
+						var x = t.a;
+						var y = t.b;
+						return A2($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$translate, x, y);
+					default:
+						var m11 = t.a.m11;
+						var m12 = t.a.m12;
+						var m21 = t.a.m21;
+						var m22 = t.a.m22;
+						var dx = t.a.dx;
+						var dy = t.a.dy;
+						return A6($joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$transform, m11, m12, m21, m22, dx, dy);
+				}
+			},
+			transforms));
+};
+var $joakin$elm_canvas$Canvas$Settings$Advanced$Translate = F2(
+	function (a, b) {
+		return {$: 'Translate', a: a, b: b};
+	});
+var $joakin$elm_canvas$Canvas$Settings$Advanced$translate = $joakin$elm_canvas$Canvas$Settings$Advanced$Translate;
 var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
 var $aforemny$material_components_web_elm$Material$Typography$typography = $elm$html$Html$Attributes$class('mdc-typography');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
@@ -8534,6 +9405,131 @@ var $simonh1000$elm_colorpicker$ColorPicker$view = F2(
 						]))
 				]));
 	});
+var $joakin$elm_canvas$Canvas$Internal$Canvas$MoveTo = function (a) {
+	return {$: 'MoveTo', a: a};
+};
+var $joakin$elm_canvas$Canvas$moveTo = function (point) {
+	return $joakin$elm_canvas$Canvas$Internal$Canvas$MoveTo(point);
+};
+var $author$project$Maze$drawLineIfnt = F2(
+	function (isN, p) {
+		return isN ? $joakin$elm_canvas$Canvas$moveTo(p) : $joakin$elm_canvas$Canvas$lineTo(p);
+	});
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $elm$core$List$member = F2(
+	function (x, xs) {
+		return A2(
+			$elm$core$List$any,
+			function (a) {
+				return _Utils_eq(a, x);
+			},
+			xs);
+	});
+var $author$project$Maze$isLinked = F3(
+	function (ns, p1, p2) {
+		var lns = A2($author$project$Maze$links, ns, p1);
+		var res = A2($elm$core$List$member, p2, lns);
+		return res;
+	});
+var $avh4$elm_color$Color$scaleFrom255 = function (c) {
+	return c / 255;
+};
+var $avh4$elm_color$Color$rgb255 = F3(
+	function (r, g, b) {
+		return A4(
+			$avh4$elm_color$Color$RgbaSpace,
+			$avh4$elm_color$Color$scaleFrom255(r),
+			$avh4$elm_color$Color$scaleFrom255(g),
+			$avh4$elm_color$Color$scaleFrom255(b),
+			1.0);
+	});
+var $author$project$Maze$walls = F3(
+	function (model, i, j) {
+		var w = model.cellSize;
+		var x1 = 4 + (i * w);
+		var x2 = x1 + w;
+		var y1 = 4 + (j * w);
+		var y2 = y1 + w;
+		var ns = model.neighborhood;
+		return A2(
+			$joakin$elm_canvas$Canvas$shapes,
+			_List_fromArray(
+				[
+					$joakin$elm_canvas$Canvas$Settings$stroke(
+					A3($avh4$elm_color$Color$rgb255, 0, 0, 0)),
+					$joakin$elm_canvas$Canvas$Settings$Advanced$transform(
+					_List_fromArray(
+						[
+							A2($joakin$elm_canvas$Canvas$Settings$Advanced$translate, 0, 0)
+						])),
+					$joakin$elm_canvas$Canvas$Settings$Line$lineWidth(model.wallWidth)
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$joakin$elm_canvas$Canvas$path,
+					_Utils_Tuple2(x1, y1),
+					_List_fromArray(
+						[
+							A2(
+							$author$project$Maze$drawLineIfnt,
+							A3(
+								$author$project$Maze$isLinked,
+								ns,
+								_Utils_Tuple2(i, j),
+								$author$project$Maze$northNeighbor(
+									_Utils_Tuple2(i, j))),
+							_Utils_Tuple2(x2, y1)),
+							A2(
+							$author$project$Maze$drawLineIfnt,
+							A3(
+								$author$project$Maze$isLinked,
+								ns,
+								_Utils_Tuple2(i, j),
+								$author$project$Maze$eastNeighbor(
+									_Utils_Tuple2(i, j))),
+							_Utils_Tuple2(x2, y2)),
+							A2(
+							$author$project$Maze$drawLineIfnt,
+							A3(
+								$author$project$Maze$isLinked,
+								ns,
+								_Utils_Tuple2(i, j),
+								$author$project$Maze$southNeighbor(
+									_Utils_Tuple2(i, j))),
+							_Utils_Tuple2(x1, y2)),
+							A2(
+							$author$project$Maze$drawLineIfnt,
+							A3(
+								$author$project$Maze$isLinked,
+								ns,
+								_Utils_Tuple2(i, j),
+								$author$project$Maze$westNeighbor(
+									_Utils_Tuple2(i, j))),
+							_Utils_Tuple2(x1, y1 - (model.wallWidth / 2)))
+						]))
+				]));
+	});
 var $author$project$Maze$view = function (model) {
 	var res = A2(
 		$elm$html$Html$div,
@@ -8576,8 +9572,8 @@ var $author$project$Maze$view = function (model) {
 							A2(
 								$aforemny$material_components_web_elm$Material$Button$setDisabled,
 								model.animating,
-								A2($aforemny$material_components_web_elm$Material$Button$setOnClick, $author$project$Maze$Color, $aforemny$material_components_web_elm$Material$Button$config))),
-						'Color'),
+								A2($aforemny$material_components_web_elm$Material$Button$setOnClick, $author$project$Maze$Solve, $aforemny$material_components_web_elm$Material$Button$config))),
+						'Solve'),
 						A2(
 						$elm$html$Html$h4,
 						_List_fromArray(
@@ -8598,7 +9594,9 @@ var $author$project$Maze$view = function (model) {
 						$elm$html$Html$select,
 						_List_fromArray(
 							[
-								A2($elm$html$Html$Attributes$style, 'width', '100%')
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								$elm$html$Html$Events$onInput($author$project$Maze$Algorithm),
+								$elm$html$Html$Attributes$value(model.algorithm)
 							]),
 						_List_fromArray(
 							[
@@ -8679,7 +9677,7 @@ var $author$project$Maze$view = function (model) {
 							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Coloring Algorithm')
+								$elm$html$Html$text('Solution Algorithm')
 							])),
 						A2(
 						$elm$html$Html$select,
@@ -8689,6 +9687,16 @@ var $author$project$Maze$view = function (model) {
 							]),
 						_List_fromArray(
 							[
+								A2(
+								$elm$html$Html$option,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$value('Dijkstra')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Dijkstra')
+									])),
 								A2(
 								$elm$html$Html$option,
 								_List_fromArray(
@@ -8708,16 +9716,6 @@ var $author$project$Maze$view = function (model) {
 								_List_fromArray(
 									[
 										$elm$html$Html$text('BFS')
-									])),
-								A2(
-								$elm$html$Html$option,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$value('Dijkstra')
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Dijkstra')
 									]))
 							])),
 						A2(
@@ -8801,7 +9799,7 @@ var $author$project$Maze$view = function (model) {
 							[$aforemny$material_components_web_elm$Material$Typography$subtitle2]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Color')
+								$elm$html$Html$text('Distance Color')
 							])),
 						A2(
 						$elm$html$Html$map,
@@ -8829,7 +9827,7 @@ var $author$project$Maze$view = function (model) {
 							[
 								A2($elm$html$Html$Attributes$style, 'width', '100%'),
 								$elm$html$Html$Attributes$type_('range'),
-								$elm$html$Html$Attributes$min('10'),
+								$elm$html$Html$Attributes$min('50'),
 								$elm$html$Html$Attributes$max('200'),
 								$elm$html$Html$Attributes$value(
 								$elm$core$String$fromFloat(model.cellSize)),
@@ -8902,24 +9900,55 @@ var $author$project$Maze$view = function (model) {
 							$author$project$Maze$ground(model),
 							_List_Nil,
 							model.distances),
-						A2(
-							$elm$core$List$concatMap,
-							function (j) {
-								return A2(
-									$elm$core$List$map,
-									$elm$core$Basics$apR(j),
+						_Utils_ap(
+							_Utils_eq(model.path, _List_Nil) ? _List_Nil : _List_fromArray(
+								[
 									A2(
+									$joakin$elm_canvas$Canvas$shapes,
+									_List_fromArray(
+										[
+											$joakin$elm_canvas$Canvas$Settings$stroke($avh4$elm_color$Color$blue),
+											$joakin$elm_canvas$Canvas$Settings$Advanced$transform(
+											_List_fromArray(
+												[
+													A2($joakin$elm_canvas$Canvas$Settings$Advanced$translate, 0, 0)
+												])),
+											$joakin$elm_canvas$Canvas$Settings$Line$lineWidth(model.wallWidth)
+										]),
+									_List_fromArray(
+										[
+											A2(
+											$joakin$elm_canvas$Canvas$path,
+											_Utils_Tuple2(4 + (model.cellSize / 2), 4 + (model.cellSize / 2)),
+											A2(
+												$elm$core$List$map,
+												function (_v4) {
+													var x = _v4.a;
+													var y = _v4.b;
+													return $joakin$elm_canvas$Canvas$lineTo(
+														_Utils_Tuple2((4 + (x * model.cellSize)) + (model.cellSize / 2), (4 + (y * model.cellSize)) + (model.cellSize / 2)));
+												},
+												model.path))
+										]))
+								]),
+							A2(
+								$elm$core$List$concatMap,
+								function (j) {
+									return A2(
 										$elm$core$List$map,
-										$author$project$Maze$cell(model),
+										$elm$core$Basics$apR(j),
 										A2(
 											$elm$core$List$map,
-											$elm$core$Basics$toFloat,
-											A2($elm$core$List$range, 0, model.width))));
-							},
-							A2(
-								$elm$core$List$map,
-								$elm$core$Basics$toFloat,
-								A2($elm$core$List$range, 0, model.height))))))
+											$author$project$Maze$walls(model),
+											A2(
+												$elm$core$List$map,
+												$elm$core$Basics$toFloat,
+												A2($elm$core$List$range, 0, model.width))));
+								},
+								A2(
+									$elm$core$List$map,
+									$elm$core$Basics$toFloat,
+									A2($elm$core$List$range, 0, model.height)))))))
 			]));
 	return res;
 };
@@ -8939,4 +9968,10 @@ var $author$project$Maze$main = $elm$browser$Browser$element(
 		view: $author$project$Maze$view
 	});
 _Platform_export({'Maze':{'init':$author$project$Maze$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
+	A2(
+		$elm$json$Json$Decode$andThen,
+		function (startTime) {
+			return $elm$json$Json$Decode$succeed(
+				{startTime: startTime});
+		},
+		A2($elm$json$Json$Decode$field, 'startTime', $elm$json$Json$Decode$float)))(0)}});}(this));
